@@ -5,6 +5,8 @@ import ecommerce_event_driven.user.modules.address.application.ports.outbound.re
 import ecommerce_event_driven.user.modules.address.domain.models.Address;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -33,9 +35,20 @@ public class AddressRepositoryAdapter implements AddressRepositoryPort {
     }
 
     @Override
+    public Optional<Address> findByIdIncludingDeleted(Long id) {
+        return jpaRepository.findById(id).map(AddressMapper::toDomain);
+    }
+
+    @Override
     public List<Address> findByIdUser(Long idUser) {
         return jpaRepository.findByIdUserAndDeletedAtIsNull(idUser).stream()
                 .map(AddressMapper::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Page<Address> findByIdUserPaginated(Long idUser, Pageable pageable) {
+        return jpaRepository.findByIdUserAndDeletedAtIsNull(idUser, pageable)
+                .map(AddressMapper::toDomain);
     }
 }
