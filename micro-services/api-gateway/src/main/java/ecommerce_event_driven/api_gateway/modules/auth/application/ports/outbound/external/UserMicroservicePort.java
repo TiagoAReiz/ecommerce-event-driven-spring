@@ -12,4 +12,7 @@ public interface UserMicroservicePort {
 
     /** Estoura se o user recusar, 409 incluso. */
     UserResponse create(CreateUserRequest request);
+
+    /** Busca o perfil completo do usuario (com roles) do endpoint interno /internal/users/{id}/profile. */
+    Optional<UserResponse> findProfile(Long userId);
 }

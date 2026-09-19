@@ -61,11 +61,36 @@ public class UserMicroservice implements UserMicroservicePort {
                 .requiredBody(UserResponse.class);
     }
 
+    @Override
+    public Optional<UserResponse> findProfile(Long userId) {
+        return restClient.get()
+                .uri("/internal/users/{id}/profile", userId)
+                .header(HttpHeaders.AUTHORIZATION, bearerForService())
+                .exchange((request, response) -> {
+                    int status = response.getStatusCode().value();
+                    if (status == 404) {
+                        return Optional.empty();
+                    }
+                    if (!response.getStatusCode().is2xxSuccessful()) {
+                        throw new IllegalStateException(
+                                "user respondeu " + status + " ao buscar profile de " + userId);
+                    }
+                    return Optional.ofNullable(response.bodyTo(UserResponse.class));
+                });
+    }
+
     /**
      * Um token novo por chamada. Assinar RSA custa menos que a propria ida ate
      * o user, e evita ter de cuidar de cache e renovacao.
      */
     private String bearer() {
         return "Bearer " + tokenIssuer.issueForLogin().value();
+    }
+
+    /**
+     * Token de servico para chamadas servidor-a-servidor.
+     */
+    private String bearerForService() {
+        return "Bearer " + tokenIssuer.issueForService("api-gateway").value();
     }
 }

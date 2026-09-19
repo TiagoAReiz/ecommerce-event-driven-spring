@@ -6,6 +6,8 @@ import ecommerce_event_driven.api_gateway.modules.auth.application.ports.outboun
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -58,12 +60,16 @@ public class JwtTokenIssuer implements TokenIssuerPort {
      * claim para o front nao precisar de um round-trip so para exibir o nome.
      */
     @Override
-    public IssuedToken issueForUser(UserResponse user) {
+    public IssuedToken issueForUser(UserResponse user, List<String> roles, Instant authTime) {
+        String jti = UUID.randomUUID().toString();
         return sign(JwtClaimsSet.builder()
                 .audience(List.of(BROWSER_AUDIENCE))
                 .subject(String.valueOf(user.id()))
                 .claim("email", user.email())
-                .claim("name", user.name()), userTtl);
+                .claim("name", user.name())
+                .claim("roles", roles)
+                .claim("auth_time", authTime.getEpochSecond())
+                .claim("jti", jti), userTtl);
     }
 
     /**
@@ -76,6 +82,28 @@ public class JwtTokenIssuer implements TokenIssuerPort {
                 .audience(List.of(INTERNAL_AUDIENCE))
                 .subject("api-gateway")
                 .claim("scope", LOGIN_SCOPE), serviceTtl);
+    }
+
+    @Override
+    public IssuedToken issueInternal(String sub, List<String> roles, Set<String> scopes) {
+        String jti = UUID.randomUUID().toString();
+        String scopeStr = String.join(" ", scopes);
+        return sign(JwtClaimsSet.builder()
+                .audience(List.of(INTERNAL_AUDIENCE))
+                .subject(sub)
+                .claim("scope", scopeStr)
+                .claim("roles", roles)
+                .claim("jti", jti), serviceTtl);
+    }
+
+    @Override
+    public IssuedToken issueForService(String clientId) {
+        String jti = UUID.randomUUID().toString();
+        return sign(JwtClaimsSet.builder()
+                .audience(List.of(INTERNAL_AUDIENCE))
+                .subject("svc:" + clientId)
+                .claim("scope", "internal:hydrate")
+                .claim("jti", jti), serviceTtl);
     }
 
     private IssuedToken sign(JwtClaimsSet.Builder claims, Duration ttl) {

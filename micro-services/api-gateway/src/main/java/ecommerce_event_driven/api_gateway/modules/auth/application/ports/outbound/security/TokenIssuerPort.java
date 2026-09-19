@@ -2,6 +2,9 @@ package ecommerce_event_driven.api_gateway.modules.auth.application.ports.outbou
 
 import ecommerce_event_driven.api_gateway.modules.auth.application.dtos.IssuedToken;
 import ecommerce_event_driven.api_gateway.modules.auth.application.dtos.UserResponse;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Emissao de token. Sao duas plateias diferentes, e elas nao se misturam:
@@ -10,8 +13,8 @@ import ecommerce_event_driven.api_gateway.modules.auth.application.dtos.UserResp
  */
 public interface TokenIssuerPort {
 
-    /** Vai para o browser. aud=front. */
-    IssuedToken issueForUser(UserResponse user);
+    /** Vai para o browser. aud=front, com roles e auth_time. */
+    IssuedToken issueForUser(UserResponse user, List<String> roles, Instant authTime);
 
     /**
      * Usado pelo proprio gateway para falar com o microservico user durante o
@@ -19,4 +22,10 @@ public interface TokenIssuerPort {
      * escopo de mexer em usuario: nao serve para alcancar nenhum outro servico.
      */
     IssuedToken issueForLogin();
+
+    /** Token interno com escopos do papel para repassar ao servico. */
+    IssuedToken issueInternal(String sub, List<String> roles, Set<String> scopes);
+
+    /** Token de servico para chamadas servidor-a-servidor. */
+    IssuedToken issueForService(String clientId);
 }

@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -46,10 +47,11 @@ public class AuthSuccessHandler implements AuthSuccessHandlerPort {
         String email = oAuth2User.getAttribute("email");
 
         UserResponse user = getOrCreate(googleSub, email, oAuth2User.getAttribute("name"), oAuth2User.getAttribute("picture"));
-        IssuedToken token = tokenIssuer.issueForUser(user);
+        Instant authTime = Instant.now();
+        IssuedToken token = tokenIssuer.issueForUser(user, user.roles(), authTime);
 
             try {
-                httpResponse.sendRedirect(frontUrl + "/callback?token="
+                httpResponse.sendRedirect(frontUrl + "/callback#token="
                         + URLEncoder.encode(token.value(), StandardCharsets.UTF_8));
 
             }catch (IOException e){

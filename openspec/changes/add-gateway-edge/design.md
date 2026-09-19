@@ -87,3 +87,40 @@ Redis `INCR rl:{ip}:{epochMinute}` com expire 60 s, limite 120/min por IP; estou
   por rota; decisão registrada no config.
 - [Proxy próprio não faz streaming] → corpos são pequenos (JSON); aceitável.
 - [Webhook com 4xx de negócio respondido 200] → evita retry inútil do MP; o evento fica no log.
+
+## Decisoes de Implementacao
+
+- **UUID em vez de ULID para X-Request-Id**: Java 25 oferece UUID nativamente. ULID exigiria
+  dependência externa sem versão no Maven Central. UUID com 128 bits de aleatoriedade e amarra
+  logs com segurança suficiente.
+
+- **SimpleClientHttpRequestFactory para timeouts**: RestClient requer suporte a timeouts de
+  conexão e leitura. SimpleClientHttpRequestFactory oferece setConnectTimeout()/setReadTimeout()
+  diretamente. JdkClientHttpRequestFactory (Java 21+) nao está disponível no Spring Boot 4.1.
+
+- **ProfileCache trata silenciosamente falhas de Redis**: Conforme o design D4 e kit de plataforma,
+  falhas de cache nunca derubam rotas. ProfileCache loga WARN e segue. Se cache falha,
+  UserMicroservice.findProfile() traz do banco.
+
+- **SessionController retorna 401 com code="SESSION_EXPIRED" em refresh**: Em vez de lançar exceção,
+  o endpoint responde 401 JSON com o código de erro estável para o front ramificar. Redis indisponível
+  também retorna 503 JSON.
+
+- **ProxyController não repassa Authorization header do browser**: Token do browser (aud=front) é
+  validado apenas no gateway. ProxyController emite novo token (aud=internal) com escopos da rota.
+  Segue design D2 e a trava de audiência (§1.2 de api-contracts.md).
+
+- **MercadoPagoWebhookController responde 200 para 404/409/422 do payment**: Por design D7, erros
+  de negócio (recurso não encontrado, conflito) não justificam retry. O Mercado Pago deixa de
+  reenviar. Erros 5xx retornam para o MP reenviar.
+
+### Correções da revisão
+
+- O proxy recebia `@AuthenticationPrincipal Optional<Jwt>`, que o Spring nunca preenche: o
+  parâmetro chegava `null`. Passou a ser `Jwt` anulável (null = anônimo).
+- A query string não era repassada (`getRequestURI()` não a inclui). O destino agora é montado com
+  `getQueryString()` e enviado como `URI` pronta, para não ser codificado duas vezes.
+- `Location` absoluto vindo do serviço (`http://user:8081/...`) é reduzido a caminho + query sob
+  `/api/v1`.
+- `/api/v1/users/me/**` e `/api/v1/products/manage/**` exigem token antes das regras públicas, que
+  casariam com eles. Usuário com token válido mas sem perfil recebe 401, não 400.
