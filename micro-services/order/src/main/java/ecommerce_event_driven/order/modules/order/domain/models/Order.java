@@ -24,6 +24,15 @@ public record Order(
         BigDecimal itemsCost,
         BigDecimal freightCost,
         BigDecimal totalCost,
+        // Projecoes de pagamento, envio e reserva de estoque
+        Long paymentId,
+        String paymentStatus,
+        Long shipmentId,
+        String shipmentStatus,
+        String trackingCode,
+        String stockReservation,
+        String cancelReason,
+        BigDecimal refundedAmount,
         Instant createdAt,
         Instant updatedAt) {
 

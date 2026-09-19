@@ -57,6 +57,31 @@ public class OrderEntity {
     @Column(name = "total_cost", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalCost;
 
+    /** Projecoes de pagamento, envio e reserva de estoque. */
+    @Column(name = "payment_id")
+    private Long paymentId;
+
+    @Column(name = "payment_status")
+    private String paymentStatus;
+
+    @Column(name = "shipment_id")
+    private Long shipmentId;
+
+    @Column(name = "shipment_status")
+    private String shipmentStatus;
+
+    @Column(name = "tracking_code")
+    private String trackingCode;
+
+    @Column(name = "stock_reservation", nullable = false)
+    private String stockReservation = "pending";
+
+    @Column(name = "cancel_reason")
+    private String cancelReason;
+
+    @Column(name = "refunded_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
     @Generated(event = EventType.INSERT)
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

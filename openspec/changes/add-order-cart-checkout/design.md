@@ -83,3 +83,36 @@ Timeout na hidratação → 200 com itens sem `product` e `issues:["HYDRATION_TI
 
 - [Chamadas síncronas no checkout aumentam a latência] → timeouts curtos (3 s) e revalidação
   obrigatória; sem ela não há garantia de preço.
+
+## Decisoes de implementacao
+
+- **Jackson 3 imports**: Usadas `tools.jackson.databind.json.JsonMapper` conforme Spring Boot 4.1, não `com.fasterxml.jackson.databind.ObjectMapper`.
+- **OutboxWriter com JdbcClient**: Grava eventos na outbox dentro de transações MANDATORY usando cast(? as jsonb) para a coluna payload.
+- **OrderStateMachine**: Criada como classe de domínio com método estático `canTransition()` que valida transições conforme tabela de event-contracts §3.1.
+- **OrderCancellationTransaction**: Reescrita para publicar `order.cancelled` e `order.refund.requested` dentro da transação, removendo publicação post-commit.
+- **CartService**: Implementada com hidratação via InventoryServiceClient e sinalização de `PRODUCT_UNAVAILABLE` e `INSUFFICIENT_STOCK` em `issues[]`.
+- **CheckoutTransaction**: Grava pedido, limpa carrinho e publica `order.created` — tudo na mesma transacao conforme D4.
+- **IdempotencyStore com Redis**: Utiliza StringRedisTemplate com NX atomicity e TTLs (60s IN_FLIGHT, 24h resultado). Se Redis falhar, loga WARN e permite prosseguir sem idempotência.
+- **RestClients**: Implementados com timeout de 3s, interceptor de token de serviço e tratamento de ResourceAccessException/HttpServerErrorException.
+- **SecurityConfig**: Regras por rota usando `hasAuthority("SCOPE_...")`, com rota `/orders/manage` posicionada ANTES de `/orders/{id}` para precedência.
+- **Migrations V4 e V5**: V4 cria tabela outbox e publicação debezium_order_outbox; V5 adiciona projeções (payment, shipment, stock_reservation, etc.) à tabela orders.
+- **CheckoutService (D4 real)**: Implementação completa que 1) valida carrinho não vazio, 2) revalida produtos com inventory (existência, atividade, estoque), 3) valida endereço no user service, 4) calcula frete no shipment, 5) valida expectedTotalCost se fornecido, 6) cria OrderItems com snapshots, 7) executa CheckoutTransaction. Erros retornam 409/422/404 conforme contrato.
+- **OrderController**: Implementação real com 1) POST /orders com idempotency-key obrigatório (UUID), 2) GET /orders com filtros status/from/to e paginação (default createdAt,desc), 3) GET /orders/{id} com projeções payment/shipment, 4) POST /orders/{id}/cancel com validação de reason, 5) GET /orders/manage (posicionado ANTES de /{id}) com filtros e idCustomer na resposta. Usa ListMyOrdersUseCase, GetMyOrderUseCase, ListStoreOrdersUseCase.
+- **InternalOrderController**: GET /internal/orders/{id} retorna InternalOrderResponse com id, idCustomer, status, idAddress, custos e items. PATCH /internal/orders/{id}/status com validacao de transicao permitida e reason obrigatório.
+- **ListMyOrdersUseCase**: Filtra pedidos por usuario (idCustomer), status (repetível), intervalo de data, página e sort. Default sort: createdAt,desc. Retorna OrderSummary sem idCustomer.
+- **GetMyOrderUseCase**: Retorna OrderDetailResponse com projeções de payment, shipment e cálculo de lineTotal por item. Valida propriedade (idCustomer) -> 404 se não pertence ao usuario.
+- **ListStoreOrdersUseCase**: Lista todos os pedidos com filtros opcionais de status, customerId, intervalo de data. Retorna OrderSummary com idCustomer incluído para gestao da loja.
+- **PendingOrderExpiryJob**: Job @Scheduled(fixedDelay=60000) que busca todos os pedidos pending com createdAt < now() - 30 min e chama OrderCancellationTransaction.cancel() para cada um com reason "pagamento nao confirmado em 30 minutos". Logs de erro não derrubam o job.
+- **CancelOrderService/OrderCancellationTransaction**: Implementação já existente que valida transicoes (pending/paid->cancelled permitidos; processing->cancelled só para owner) e publica order.cancelled + order.refund.requested se havia paymentId dentro da mesma transacao.
+
+### Correções da revisão
+
+- A primeira implementação devolvia respostas fixas (lista vazia, detalhe `pending`, cancelamento
+  que não cancelava) e criava pedido sem itens; foi refeita com casos de uso reais.
+- Rotas internas no caminho do contrato (`/internal/orders/**`), não `/orders/internal/**`.
+- Chamadas a `inventory`, `user` e `shipment` usam sempre o token de serviço (`internal:hydrate`);
+  o token do usuário não tem esse escopo e seria recusado com 403.
+- Falha de serviço chamado vira `UpstreamException`: 503 indisponível, 504 timeout, 502 resposta
+  inválida (antes eram 400).
+- `POST /orders` passou a usar o `IdempotencyStore`: replay com `Idempotency-Replayed: true`, 422
+  para corpo diferente, 409 em voo; a marca em voo é liberada quando o checkout falha.
