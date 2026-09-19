@@ -67,3 +67,14 @@ script insiste até o Flyway de cada serviço criar a publicação.
 - [`curl` ausente na imagem do Connect quebra o healthcheck] → conferir; se ausente, usar
   `bash -c 'exec 3<>/dev/tcp/localhost/8083'` como teste.
 - [`wal_level` só vale após restart] → o `command:` do serviço `db` aplica em toda subida.
+
+## Decisões de implementação
+
+- **Versões fixas**, conferidas por HTTP nos registries antes de fixar: `apache/kafka:3.9.2`,
+  `postgres:17.1`, `redis:7.4-alpine`, `quay.io/debezium/connect:3.1`, `curlimages/curl:8.12.0`.
+- **`connect-init` com `curlimages/curl`**: o `register.sh` só precisa de `sh` e `curl`.
+- **`.env.example` em dois níveis**: `micro-services/.env.example` com as variáveis do compose e
+  `micro-services/api-gateway/.env.example` com as credenciais do Google OAuth, lidas pelo
+  `env_file` do gateway.
+- **README em dois idiomas**: resumo em inglês no topo e o corpo em português, com diagramas
+  mermaid de arquitetura e da saga do checkout.

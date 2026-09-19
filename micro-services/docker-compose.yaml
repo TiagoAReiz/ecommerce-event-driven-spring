@@ -1,17 +1,11 @@
 services:
 
   broker:
-    image: apache/kafka:latest
+    image: apache/kafka:3.9.2
     container_name: broker
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      # Dois listeners de proposito:
-      #   INTERNAL -> como os containers se enxergam (broker:9092)
-      #   HOST     -> como a sua maquina enxerga, quando voce roda um servico
-      #               pela IDE em vez do compose (localhost:29092)
-      # Com um listener so anunciando localhost, os containers tentariam
-      # conectar em si mesmos e nunca achariam o broker.
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker:9092,HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,HOST:PLAINTEXT
@@ -27,9 +21,10 @@ services:
       - 29092:29092
 
   db:
-    image: postgres:17
+    image: postgres:17.1
     restart: always
     shm_size: 128mb
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
@@ -37,24 +32,16 @@ services:
     ports:
       - 5432:5432
     volumes:
-      # Roda apenas na primeira inicialização, com o datadir vazio.
       - ./db/init:/docker-entrypoint-initdb.d:ro
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      # depends_on sozinho so espera o container existir, nao o banco aceitar
-      # conexao. Sem isto o Flyway sobe antes da hora e o servico morre no boot.
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # ------------------------------------------------------------------
-  # Cache. Tudo aqui e descartavel: se o Redis cair, os servicos seguem
-  # lendo do Postgres. Por isso allkeys-lru e sem persistencia em disco.
-  # Sem ports: so a rede interna enxerga, igual aos microservicos.
-  # ------------------------------------------------------------------
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     command: ["redis-server", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -62,11 +49,42 @@ services:
       timeout: 3s
       retries: 10
 
-  # ------------------------------------------------------------------
-  # UNICO servico com porta publicada. Todos os outros existem apenas na
-  # rede interna do compose: nao ha rota da sua maquina, nem da internet,
-  # ate eles. Essa e a trava de rede.
-  # ------------------------------------------------------------------
+  connect:
+    image: quay.io/debezium/connect:3.1
+    environment:
+      BOOTSTRAP_SERVERS: broker:9092
+      GROUP_ID: debezium-outbox
+      CONFIG_STORAGE_TOPIC: _connect-configs
+      OFFSET_STORAGE_TOPIC: _connect-offsets
+      STATUS_STORAGE_TOPIC: _connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_CONFIG_PROVIDERS: env
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: org.apache.kafka.common.config.provider.EnvVarConfigProvider
+      DEBEZIUM_DB_USER: ${DEBEZIUM_DB_USER:-postgres}
+      DEBEZIUM_DB_PASSWORD: ${DEBEZIUM_DB_PASSWORD:-postgres}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8083/connectors"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      broker:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+  connect-init:
+    image: curlimages/curl:8.12.0
+    volumes:
+      - ./debezium/connectors:/connectors:ro
+      - ./debezium/register.sh:/register.sh:ro
+    entrypoint: ["sh", "/register.sh"]
+    depends_on:
+      connect:
+        condition: service_healthy
+
   api-gateway:
     build: ./api-gateway
     ports:
@@ -74,61 +92,131 @@ services:
     env_file:
       - ./api-gateway/.env
     environment:
-      APP_USER_MICROSERVICE_URL: http://user:8081
+      KAFKA_BOOTSTRAP: broker:9092
+      REDIS_HOST: redis
+      DB_URL: jdbc:postgresql://db:5432/user_db
+      JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
+      GATEWAY_URL: http://api-gateway:8080
+      USER_SERVICE_URL: http://user:8081
+      INVENTORY_SERVICE_URL: http://inventory:8082
+      ORDER_SERVICE_URL: http://order:8083
+      PAYMENT_SERVICE_URL: http://payment:8084
+      SHIPMENT_SERVICE_URL: http://shipment:8085
+      USER_CLIENT_SECRET: ${USER_CLIENT_SECRET:-dev-user-secret}
+      INVENTORY_CLIENT_SECRET: ${INVENTORY_CLIENT_SECRET:-dev-inventory-secret}
+      ORDER_CLIENT_SECRET: ${ORDER_CLIENT_SECRET:-dev-order-secret}
+      PAYMENT_CLIENT_SECRET: ${PAYMENT_CLIENT_SECRET:-dev-payment-secret}
+      SHIPMENT_CLIENT_SECRET: ${SHIPMENT_CLIENT_SECRET:-dev-shipment-secret}
+      STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL}
+      FRONT_URL: ${FRONT_URL:-http://localhost:3000}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-dev-webhook-secret}
     volumes:
-      # A chave privada e MONTADA, nunca copiada para dentro da imagem.
       - ./api-gateway/keys:/app/keys:ro
     depends_on:
-      - user
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      user:
+        condition: service_started
 
   user:
     build: ./user
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/user_db
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
-      # Vem do micro-services/.env (fora do git) ou do shell. Vazio, o user nao sobe.
+      KAFKA_BOOTSTRAP: broker:9092
+      REDIS_HOST: redis
+      DB_URL: jdbc:postgresql://db:5432/user_db
+      JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
+      GATEWAY_URL: http://api-gateway:8080
+      SERVICE_CLIENT_SECRET: ${USER_CLIENT_SECRET:-dev-user-secret}
       STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL}
     depends_on:
       db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+      redis:
         condition: service_healthy
 
   inventory:
     build: ./inventory
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/inventory_db
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      KAFKA_BOOTSTRAP: broker:9092
+      REDIS_HOST: redis
+      DB_URL: jdbc:postgresql://db:5432/inventory_db
+      JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
+      GATEWAY_URL: http://api-gateway:8080
+      USER_SERVICE_URL: http://user:8081
+      SERVICE_CLIENT_SECRET: ${INVENTORY_CLIENT_SECRET:-dev-inventory-secret}
     depends_on:
       db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+      redis:
         condition: service_healthy
 
   order:
     build: ./order
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/order_db
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      KAFKA_BOOTSTRAP: broker:9092
+      REDIS_HOST: redis
+      DB_URL: jdbc:postgresql://db:5432/order_db
+      JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
+      GATEWAY_URL: http://api-gateway:8080
+      USER_SERVICE_URL: http://user:8081
+      INVENTORY_SERVICE_URL: http://inventory:8082
+      SHIPMENT_SERVICE_URL: http://shipment:8085
+      SERVICE_CLIENT_SECRET: ${ORDER_CLIENT_SECRET:-dev-order-secret}
     depends_on:
       db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+      redis:
         condition: service_healthy
 
   payment:
     build: ./payment
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/payment_db
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+      KAFKA_BOOTSTRAP: broker:9092
+      REDIS_HOST: redis
+      DB_URL: jdbc:postgresql://db:5432/payment_db
+      JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
+      GATEWAY_URL: http://api-gateway:8080
+      ORDER_SERVICE_URL: http://order:8083
+      SERVICE_CLIENT_SECRET: ${PAYMENT_CLIENT_SECRET:-dev-payment-secret}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN}
+      MP_PUBLIC_KEY: ${MP_PUBLIC_KEY}
+      MP_NOTIFICATION_URL: ${MP_NOTIFICATION_URL}
     depends_on:
       db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+      redis:
         condition: service_healthy
 
   shipment:
     build: ./shipment
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/shipment_db
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+      KAFKA_BOOTSTRAP: broker:9092
+      REDIS_HOST: redis
+      DB_URL: jdbc:postgresql://db:5432/shipment_db
+      JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
+      GATEWAY_URL: http://api-gateway:8080
+      USER_SERVICE_URL: http://user:8081
+      ORDER_SERVICE_URL: http://order:8083
+      SERVICE_CLIENT_SECRET: ${SHIPMENT_CLIENT_SECRET:-dev-shipment-secret}
     depends_on:
       db:
         condition: service_healthy
+      broker:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
 volumes:
-    pgdata:
+  pgdata:
