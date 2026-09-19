@@ -5,24 +5,134 @@ context: |
   All artifacts must be written in pt-BR.
   Keep OpenSpec structural headings and SHALL/MUST keywords in English.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  # PROJETO
+  Loja virtual (loja UNICA, nao marketplace) em microsservicos Spring Boot 4.1.1 / Java 25,
+  orientada a eventos com Kafka. Monorepo: micro-services/<servico>, cada um um projeto Maven
+  independente (sem modulo compartilhado; codigo de plataforma e copiado em cada servico).
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  Fontes de verdade (LER antes de planejar ou implementar):
+  - docs/api-contracts.md    -> toda rota HTTP: corpos, parametros, codigos HTTP por rota
+  - docs/event-contracts.md  -> todo evento Kafka: topico, key, alias, payload, efeito, resultados
+  - docs/outbox-debezium.md  -> ADR-001: outbox transacional + Debezium (SQL e codigo de referencia)
+  - docs/kafka.md            -> configuracao de serializer/deserializer Kafka
+
+  Servicos, portas e bancos (Postgres 17, um banco por servico, sem FK entre servicos):
+  api-gateway 8080 (unico com porta publicada) | user 8081 user_db | inventory 8082 inventory_db
+  order 8083 order_db | payment 8084 payment_db | shipment 8085 shipment_db
+
+  # STACK E ARMADILHAS DE VERSAO
+  - Jackson 3: ObjectMapper/JsonMapper em tools.jackson.databind (NAO com.fasterxml.jackson.databind).
+    Anotacoes continuam em com.fasterxml.jackson.annotation (@JsonFormat, @JsonInclude...).
+    O Spring Boot 4 ja registra um bean tools.jackson.databind.json.JsonMapper.
+  - Spring Kafka 4: JacksonJsonSerializer / JacksonJsonDeserializer (nunca JsonSerializer/JsonDeserializer).
+  - Spring Security 7, Hibernate 7, Flyway, RestClient (nao RestTemplate, nao WebClient).
+  - Starters permitidos alem dos que ja existem: spring-boot-starter-validation,
+    spring-boot-starter-data-redis, spring-boot-starter-cache. Nenhuma outra dependencia externa.
+  - Verificacao obrigatoria de cada servico: `mvn -q -DskipTests compile` dentro de
+    micro-services/<servico> precisa passar. Os testes *ApplicationTests exigem banco: nao rodar.
+
+  # CONVENCOES DE CODIGO (seguir o codigo existente)
+  - Hexagonal por modulo: modules/<modulo>/{application/{dtos,mappers,ports/{inbound,outbound},usecases},
+    domain/{models,exceptions},infra/{inbound/{controllers,messaging},outbound/{repos,messaging,external}}}.
+    Portas terminam em Port; adaptadores de repositorio em Adapter; mappers estaticos em *Mapper.
+  - Modelos de dominio: record com @Builder(toBuilder = true). Entidades JPA so na infra (Lombok).
+  - DTOs HTTP: record. Validacao com jakarta.validation (@Valid, @NotNull...).
+  - Injecao por construtor. Sem field injection.
+  - Enums espelham ENUM do Postgres com constantes minusculas.
+  - Schema: so migration NOVA (V<n>__nome.sql); nunca editar migration existente. ddl-auto=validate.
+  - Comentarios em portugues SEM acento, explicando o porque.
+  - Nunca mencionar ferramenta ou assistente de IA em codigo, comentario, commit ou documento.
+    Nao fazer git commit (o coordenador commita).
+
+  # KIT DE PLATAFORMA (cada servico tem sua copia, pacote ecommerce_event_driven.<svc>.shared)
+  - shared/web/ApiException (abstrata, com HttpStatus e code estavel) e subclasses NotFoundException(404),
+    ConflictException(409), UnprocessableException(422), BadRequestException(400), ForbiddenException(403).
+  - shared/web/GlobalExceptionHandler (@RestControllerAdvice): responde ProblemDetail
+    (application/problem+json) com propriedades extras code, requestId (header X-Request-Id), timestamp
+    e errors[] {field,message} para MethodArgumentNotValidException/ConstraintViolation.
+    Nunca vaza stack trace nem SQL.
+  - shared/web/PageResponse<T>(List<T> content, PageMeta page) com PageMeta(number,size,totalElements,totalPages).
+  - Dinheiro em DTO HTTP: BigDecimal anotado @JsonFormat(shape = JsonFormat.Shape.STRING) -> "129.90".
+    Em evento Kafka: numero JSON (sem anotacao).
+  - shared/security/CurrentUser: le o Jwt (@AuthenticationPrincipal Jwt) -> id (Long do claim sub),
+    roles (claim roles). Nenhuma rota aceita userId no corpo/path para identificar o autor.
+  - config/SecurityConfig: resource server JWT, STATELESS, csrf off, sem nenhuma rota permitAll,
+    regras por rota com hasAuthority("SCOPE_<escopo>"); /internal/** exige SCOPE_internal:hydrate.
+  - shared/outbox: OutboxWriter (JdbcClient, @Transactional(propagation = MANDATORY), payload jsonb via
+    JsonMapper), OutboxMessage(eventId,aggregateType,aggregateId,topic,type,event), OutboxPurgeJob
+    (@Scheduled diario, apaga > 7 dias) e @EnableScheduling. Migration da outbox + publicacao
+    debezium_<svc>_outbox + tabela debezium_heartbeat exatamente como docs/outbox-debezium.md 6.2.
+    Evento de dominio NUNCA sai por KafkaTemplate: o adaptador da port grava na outbox dentro da
+    transacao que muda o estado.
+  - config/KafkaConfig: DefaultErrorHandler bloqueante + DeadLetterPublishingRecoverer para
+    <topico>-dlt (mesma particao) com ExponentialBackOff(1s, x2, max 10s, total 60s);
+    nao-retentaveis: DeserializationException, InvalidEventException, DataIntegrityViolationException.
+    NewTopic (3 particoes, 1 replica) para cada topico que o servico PRODUZ e o respectivo -dlt.
+    Consumidor: group-id = nome do servico; type.mapping de consumidor conforme event-contracts 9.
+  - shared/client/ServiceTokenProvider: obtem token de servico no gateway
+    (POST {app.gateway.url}/auth/service-token, corpo {"clientId","clientSecret"},
+    resposta {"accessToken","expiresIn"}), cacheia ate 30s antes de expirar. RestClient para cada
+    servico downstream com interceptor que poe Authorization: Bearer <token de servico>.
+    Propriedades: app.gateway.url, app.service-client.id=<svc>, app.service-client.secret,
+    app.services.<destino>.url. Toda chamada servidor-a-servidor usa esse token (escopo internal:hydrate).
+  - Redis (quando usado): spring.data.redis.host=${REDIS_HOST:localhost}. Falha de Redis nunca derruba
+    rota de cache: loga WARN e segue para o banco.
+  - application.properties: toda URL/credencial com placeholder de env e default local;
+    server.port fixo da tabela acima. NOMES DE VARIAVEL (contrato com o docker-compose):
+      spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/<svc>_db}
+      spring.kafka.bootstrap-servers=${KAFKA_BOOTSTRAP:localhost:29092}
+      spring.data.redis.host=${REDIS_HOST:localhost}
+      spring.security.oauth2.resourceserver.jwt.jwk-set-uri=${JWKS_URI:http://localhost:8080/.well-known/jwks.json}
+      spring.security.oauth2.resourceserver.jwt.audiences=internal
+      app.gateway.url=${GATEWAY_URL:http://localhost:8080}
+      app.service-client.id=<svc>   app.service-client.secret=${SERVICE_CLIENT_SECRET:dev-<svc>-secret}
+      app.services.user.url=${USER_SERVICE_URL:http://localhost:8081}   (idem INVENTORY_/ORDER_/PAYMENT_/SHIPMENT_SERVICE_URL, portas 8082-8085)
+    Gateway: app.service-clients.<svc>=${<SVC>_CLIENT_SECRET:dev-<svc>-secret}, app.front-url=${FRONT_URL:http://localhost:3000},
+    app.mercadopago.webhook-secret=${MP_WEBHOOK_SECRET:dev-webhook-secret}.
+    Payment: app.mercadopago.access-token=${MP_ACCESS_TOKEN:}, app.mercadopago.public-key=${MP_PUBLIC_KEY:},
+    app.mercadopago.notification-url=${MP_NOTIFICATION_URL:}, app.mercadopago.base-url=https://api.mercadopago.com.
+    User: app.store.owner-email=${STORE_OWNER_EMAIL} (ja existe).
+
+  # AUTENTICACAO E ESCOPOS
+  - So o gateway emite JWT (RS256, JWKS em /.well-known/jwks.json). Token do browser: aud=front.
+    Token interno: aud=internal, claims sub (id do usuario, "anonymous" ou "svc:<id>"), scope, roles.
+  - O gateway troca o token do browser por um token interno a cada chamada. O token interno carrega o
+    CONJUNTO DE ESCOPOS DO PAPEL do usuario (decisao 2026-09-19, simplifica a borda):
+    anonimo  = catalog:read users:read reviews:read shipments:read payments:read
+    customer = anonimo + users:write addresses:read addresses:write reviews:write cart:read cart:write
+               orders:read orders:write payments:write shipments:write
+    owner    = customer + catalog:write sales:read payments:refund
+    servico  = internal:hydrate (gateway usa tambem webhooks:ingest ao repassar webhook)
+  - Papel owner: a conta de app.store.owner-email (ja implementado no user). Nao existe admin.
+
+  # CONTRATOS ENTRE SERVICOS (HTTP interno, sempre com token de servico)
+  - gateway -> user: GET /users?email= , POST /users (ja existem); GET /internal/users/{id}/profile
+    -> {id,name,email,photoUrl,roles}
+  - inventory -> user: GET /internal/users?ids=1,2 -> {users:[{id,name,photoUrl}],missing:[]}
+  - order -> inventory: GET /internal/products?ids= -> {products:[{id,name,price,photoUrl,available,active}],missing:[]}
+  - order, shipment -> user: GET /internal/addresses/{id}?userId= (devolve inclusive endereco removido)
+  - order -> shipment: GET /shipping/quote?zipcode= -> {zipcode,origin{city,state},distanceKm,ratePerKm,freightCost}
+  - payment -> order: GET /internal/orders/{id} -> {id,idCustomer,status,idAddress,itemsCost,freightCost,totalCost,items[]}
+  - gateway -> payment: POST /webhooks/mercadopago (escopo webhooks:ingest)
+  Dinheiro nesses JSONs tambem e string.
+
+  # DECISOES DE PRODUTO JA TOMADAS
+  - Loja unica, um owner, sem admin; categorias so por migration (API de categoria e so leitura).
+  - Sessao por Bearer (sem cookie); refresh deslizante com o proprio token, teto de 7 dias (claim auth_time).
+  - Frete = ceil(km em linha reta) x R$ 1,00; origem = endereco da loja em config (app.store.origin.*,
+    com lat/lon); destino geocodificado na BrasilAPI v2 (cache Redis 30 d). Sem transportadora: loja
+    despacha, comprador confirma a entrega.
+  - Avaliacao pertence ao produto. Pagamento: Mercado Pago (PIX, cartao tokenizado no front, Checkout Pro).
+  - Saga orquestrada pelo order (ver event-contracts). Envio so nasce em order.confirmed.
+    Todo estorno automatico via order.refund.requested.
+  - Endereco e IMUTAVEL (decisao 2026-09-19): PUT/PATCH de endereco criam um endereco novo e removem
+    (soft delete) o antigo; a rota interna enxerga removidos. Resolve o pedido que aponta para
+    endereco editado entre checkout e pagamento.
+  - Upload de foto por arquivo fora do escopo (decisao 2026-09-19): foto de produto e sempre photoUrl.
+
+rules:
+  tasks:
+    - Every task names the concrete files it touches and ends with how to verify it.
+    - The last task group always verifies `mvn -q -DskipTests compile` for every service the change touches.
+  design:
+    - Reference docs/api-contracts.md and docs/event-contracts.md sections instead of restating contracts.
