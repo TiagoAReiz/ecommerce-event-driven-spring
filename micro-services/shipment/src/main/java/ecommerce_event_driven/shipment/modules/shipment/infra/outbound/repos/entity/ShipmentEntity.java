@@ -107,4 +107,7 @@ public class ShipmentEntity {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    @Column(name = "cancel_reason", length = 500)
+    private String cancelReason;
 }

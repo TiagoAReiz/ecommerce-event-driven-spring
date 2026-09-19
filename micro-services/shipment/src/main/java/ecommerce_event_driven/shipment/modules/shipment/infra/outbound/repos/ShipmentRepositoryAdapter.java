@@ -3,6 +3,9 @@ package ecommerce_event_driven.shipment.modules.shipment.infra.outbound.repos;
 import ecommerce_event_driven.shipment.modules.shipment.application.mappers.ShipmentMapper;
 import ecommerce_event_driven.shipment.modules.shipment.application.ports.outbound.repos.ShipmentRepositoryPort;
 import ecommerce_event_driven.shipment.modules.shipment.domain.models.Shipment;
+import ecommerce_event_driven.shipment.modules.shipment.domain.models.ShipmentStatus;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,5 +45,29 @@ public class ShipmentRepositoryAdapter implements ShipmentRepositoryPort {
     public Page<Shipment> findByIdUser(Long idUser, Pageable pageable) {
         return jpaRepository.findByIdUserAndDeletedAtIsNull(idUser, pageable)
                 .map(ShipmentMapper::toDomain);
+    }
+
+    public Page<Shipment> findByIdUserWithFilters(Long idUser, List<String> statusFilters, Long orderId, Pageable pageable) {
+        List<ShipmentStatus> statuses = statusFilters == null || statusFilters.isEmpty()
+            ? List.of()
+            : statusFilters.stream().map(ShipmentStatus::valueOf).toList();
+        return jpaRepository.findByIdUserWithFilters(idUser, statuses, orderId, pageable)
+                .map(ShipmentMapper::toDomain);
+    }
+
+    public Page<Shipment> findAllWithFilters(List<String> statusFilters, Long orderId, Pageable pageable) {
+        List<ShipmentStatus> statuses = statusFilters == null || statusFilters.isEmpty()
+            ? List.of()
+            : statusFilters.stream().map(ShipmentStatus::valueOf).toList();
+        return jpaRepository.findAllWithFilters(statuses, orderId, pageable)
+                .map(ShipmentMapper::toDomain);
+    }
+
+    public List<Shipment> findExpiredInTransit(Instant beforeTimestamp) {
+        List<ShipmentStatus> statuses = List.of(ShipmentStatus.in_transit, ShipmentStatus.out_for_delivery);
+        return jpaRepository.findExpiredInTransit(statuses, beforeTimestamp)
+                .stream()
+                .map(ShipmentMapper::toDomain)
+                .toList();
     }
 }

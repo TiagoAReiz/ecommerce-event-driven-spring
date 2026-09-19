@@ -14,6 +14,7 @@ public record Shipment(
         ShipmentStatus status,
         BigDecimal freightTax,
         String trackingCode,
+        String cancelReason,
         AddressSnapshot destination,
         AddressSnapshot origin,
         Instant createdAt,

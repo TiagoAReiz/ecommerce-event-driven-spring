@@ -21,6 +21,7 @@ public final class ShipmentMapper {
                 .status(entity.getStatus())
                 .freightTax(entity.getFreightTax())
                 .trackingCode(entity.getTrackingCode())
+                .cancelReason(entity.getCancelReason())
                 .destination(AddressSnapshot.builder()
                         .zipcode(entity.getToZipcode())
                         .country(entity.getToCountry())
@@ -57,6 +58,7 @@ public final class ShipmentMapper {
                 .status(model.status())
                 .freightTax(model.freightTax())
                 .trackingCode(model.trackingCode())
+                .cancelReason(model.cancelReason())
                 .createdAt(model.createdAt())
                 .updatedAt(model.updatedAt())
                 .deletedAt(model.deletedAt());
