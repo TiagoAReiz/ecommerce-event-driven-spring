@@ -49,10 +49,6 @@ public class OrderItemEntity {
     @Column(name = "product_photo_url")
     private String productPhotoUrl;
 
-    /** [snapshot] quem vende, usado pelo shipment. */
-    @Column(name = "id_owner", nullable = false)
-    private Long idOwner;
-
     @Column(name = "price_at_time", nullable = false, precision = 12, scale = 2)
     private BigDecimal priceAtTime;
 
@@ -66,7 +62,4 @@ public class OrderItemEntity {
     @Generated(event = { EventType.INSERT, EventType.UPDATE })
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
-
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
 }

@@ -1,5 +1,6 @@
 package ecommerce_event_driven.shipment.modules.shipment.infra.outbound.repos.entity;
 
+import ecommerce_event_driven.shipment.modules.shipment.domain.models.ShipmentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -77,9 +78,6 @@ public class ShipmentEntity {
     private String toNumber;
 
     // origem: [snapshot] completo
-
-    @Column(name = "id_address_owner", nullable = false)
-    private Long idAddressOwner;
 
     @Column(name = "from_zipcode", nullable = false, length = 20)
     private String fromZipcode;

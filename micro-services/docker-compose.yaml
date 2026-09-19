@@ -1,19 +1,134 @@
 services:
 
-    db:
-      image: postgres:17
-      restart: always
-      shm_size: 128mb
-      environment:
-        POSTGRES_PASSWORD: postgres
-        POSTGRES_USER: postgres
-        POSTGRES_DB: postgres
-      ports:
-        - 5432:5432
-      volumes:
-        # Roda apenas na primeira inicialização, com o datadir vazio.
-        - ./db/init:/docker-entrypoint-initdb.d:ro
-        - pgdata:/var/lib/postgresql/data
+  broker:
+    image: apache/kafka:latest
+    container_name: broker
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # Dois listeners de proposito:
+      #   INTERNAL -> como os containers se enxergam (broker:9092)
+      #   HOST     -> como a sua maquina enxerga, quando voce roda um servico
+      #               pela IDE em vez do compose (localhost:29092)
+      # Com um listener so anunciando localhost, os containers tentariam
+      # conectar em si mesmos e nunca achariam o broker.
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker:9092,HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    ports:
+      - 29092:29092
+
+  db:
+    image: postgres:17
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      # Roda apenas na primeira inicialização, com o datadir vazio.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # depends_on sozinho so espera o container existir, nao o banco aceitar
+      # conexao. Sem isto o Flyway sobe antes da hora e o servico morre no boot.
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # Cache. Tudo aqui e descartavel: se o Redis cair, os servicos seguem
+  # lendo do Postgres. Por isso allkeys-lru e sem persistencia em disco.
+  # Sem ports: so a rede interna enxerga, igual aos microservicos.
+  # ------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # UNICO servico com porta publicada. Todos os outros existem apenas na
+  # rede interna do compose: nao ha rota da sua maquina, nem da internet,
+  # ate eles. Essa e a trava de rede.
+  # ------------------------------------------------------------------
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - 8080:8080
+    env_file:
+      - ./api-gateway/.env
+    environment:
+      APP_USER_MICROSERVICE_URL: http://user:8081
+    volumes:
+      # A chave privada e MONTADA, nunca copiada para dentro da imagem.
+      - ./api-gateway/keys:/app/keys:ro
+    depends_on:
+      - user
+
+  user:
+    build: ./user
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/user_db
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+      # Vem do micro-services/.env (fora do git) ou do shell. Vazio, o user nao sobe.
+      STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  inventory:
+    build: ./inventory
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/inventory_db
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:9092
+    depends_on:
+      db:
+        condition: service_healthy
+
+  order:
+    build: ./order
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/order_db
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:9092
+    depends_on:
+      db:
+        condition: service_healthy
+
+  payment:
+    build: ./payment
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/payment_db
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+    depends_on:
+      db:
+        condition: service_healthy
+
+  shipment:
+    build: ./shipment
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/shipment_db
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://api-gateway:8080/.well-known/jwks.json
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
     pgdata:

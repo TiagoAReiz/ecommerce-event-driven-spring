@@ -48,12 +48,13 @@ CREATE TABLE order_item (
                             price_at_time     NUMERIC(12,2) NOT NULL CHECK (price_at_time >= 0),
                             quantity          INTEGER NOT NULL CHECK (quantity > 0),
                             created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-                            updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-                            deleted_at        TIMESTAMPTZ
+                            updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX order_item_order_idx   ON order_item (id_order)   WHERE deleted_at IS NULL;
-CREATE INDEX order_item_product_idx ON order_item (id_product) WHERE deleted_at IS NULL;
+-- Sem deleted_at: item de pedido e historico, igual ao pedido. Quem edita
+-- item antes de fechar e o carrinho (cart_items), nao esta tabela.
+CREATE INDEX order_item_order_idx   ON order_item (id_order);
+CREATE INDEX order_item_product_idx ON order_item (id_product);
 
 CREATE TRIGGER order_item_set_updated_at BEFORE UPDATE ON order_item
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();

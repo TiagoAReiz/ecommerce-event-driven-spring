@@ -1,0 +1,9 @@
+# Nada daqui entra no contexto de build. As duas primeiras linhas sao as que
+# importam: segredo e chave privada nunca podem ir parar numa camada de imagem.
+.env
+keys/
+target/
+.mvn/
+mvnw
+mvnw.cmd
+HELP.md

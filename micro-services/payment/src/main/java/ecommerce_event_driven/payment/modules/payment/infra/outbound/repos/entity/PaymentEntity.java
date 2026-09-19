@@ -1,5 +1,6 @@
 package ecommerce_event_driven.payment.modules.payment.infra.outbound.repos.entity;
 
+import ecommerce_event_driven.payment.modules.payment.domain.models.PaymentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

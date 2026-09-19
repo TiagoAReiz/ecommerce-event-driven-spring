@@ -1,5 +1,6 @@
 package ecommerce_event_driven.order.modules.order.infra.outbound.repos.entity;
 
+import ecommerce_event_driven.order.modules.order.domain.models.OrderStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -37,6 +38,10 @@ public class OrderEntity {
     /** Servico user, sem FK. */
     @Column(name = "id_customer", nullable = false)
     private Long idCustomer;
+
+    /** Endereco de entrega, servico user, sem FK. */
+    @Column(name = "id_address", nullable = false)
+    private Long idAddress;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

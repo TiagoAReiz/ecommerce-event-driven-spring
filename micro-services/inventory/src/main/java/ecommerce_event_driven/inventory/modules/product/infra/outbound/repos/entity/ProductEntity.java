@@ -33,14 +33,6 @@ public class ProductEntity {
     @Column(name = "id")
     private Long id;
 
-    /** Servico user, sem FK. */
-    @Column(name = "id_owner", nullable = false)
-    private Long idOwner;
-
-    /** [snapshot] evita chamada por card na vitrine. */
-    @Column(name = "owner_name", length = 150)
-    private String ownerName;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_category")
     private CategoryEntity category;
