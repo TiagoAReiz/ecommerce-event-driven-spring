@@ -17,4 +17,7 @@ public interface PaymentJpaRepository extends JpaRepository<PaymentEntity, Long>
     Optional<PaymentEntity> findByIdempotencyKey(String idempotencyKey);
 
     List<PaymentEntity> findByIdOrder(Long idOrder);
+
+    /** Busca por ID externo do Mercado Pago (usado em webhooks) */
+    Optional<PaymentEntity> findByExternalId(String externalId);
 }

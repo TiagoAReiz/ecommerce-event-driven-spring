@@ -20,4 +20,7 @@ public interface PaymentRepositoryPort {
     Optional<Payment> findByIdempotencyKey(String idempotencyKey);
 
     List<Payment> findByIdOrder(Long idOrder);
+
+    /** Busca por ID externo do Mercado Pago (usado em webhooks) */
+    Optional<Payment> findByExternalId(String externalId);
 }

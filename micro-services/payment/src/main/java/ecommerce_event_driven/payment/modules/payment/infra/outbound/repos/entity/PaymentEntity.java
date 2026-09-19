@@ -59,6 +59,54 @@ public class PaymentEntity {
     @Column(name = "idempotency_key", nullable = false, length = 120)
     private String idempotencyKey;
 
+    /** Metodo de pagamento: pix, credit_card, checkout_pro */
+    @Column(name = "method", length = 20)
+    private String method;
+
+    /** Detalhe do status do MP (ex: cc_rejected_insufficient_amount) */
+    @Column(name = "status_detail", length = 120)
+    private String statusDetail;
+
+    /** QR Code em formato texto (PIX) */
+    @Column(name = "qr_code")
+    private String qrCode;
+
+    /** QR Code em base64 (PIX) */
+    @Column(name = "qr_code_base64")
+    private String qrCodeBase64;
+
+    /** URL do ticket do PIX */
+    @Column(name = "ticket_url")
+    private String ticketUrl;
+
+    /** URL de checkout (Checkout Pro) */
+    @Column(name = "init_point")
+    private String initPoint;
+
+    /** Data de expiracao do PIX ou preference */
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
+    /** Bandeira do cartao */
+    @Column(name = "card_brand", length = 30)
+    private String cardBrand;
+
+    /** Ultimos 4 digitos do cartao */
+    @Column(name = "card_last4", length = 4)
+    private String cardLast4;
+
+    /** Quantidade de parcelas do cartao */
+    @Column(name = "installments")
+    private Short installments;
+
+    /** Valor total estornado */
+    @Column(name = "refunded_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal refundedAmount;
+
+    /** Data de aprovacao no MP */
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
     @Generated(event = EventType.INSERT)
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

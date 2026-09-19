@@ -95,3 +95,41 @@ status `refunded` quando total, e grava `payment.refunded` (`full`, `origin`) na
   `idempotency_key` já existe; `POST /payments/{id}/sync` e o webhook reconciliam.
 - [Modo fake mascara erro de configuração em produção] → WARN no boot e `environment=fake` em
   `/payments/config`.
+
+## Decisoes de implementacao
+
+- **Estrutura de portas**: `PaymentGatewayPort` como abstração única para os adaptadores (MercadoPagoClient e FakePaymentGateway), selecionados via `@ConditionalOnProperty` baseado na presença de `app.mercadopago.access-token`.
+
+- **Outbox transacional**: `OutboxWriter` com `@Transactional(propagation = MANDATORY)` garante que eventos só são gravados se a transação do estado for commitada. Débito de Debezium para publicar via WAL.
+
+- **Controllers stub**: Implementação inicial com endpoints stub compiláveis nas tasks 4.1-4.5; lógica de negócio a ser completada em iteração posterior.
+
+- **Kafka ErrorHandler**: Retry bloqueante com ExponentialBackOff (1s, x2, max 10s, 60s total) preserva ordem por pedido. DeadLetterPublishingRecoverer envia falhas permanentes para `-dlt` com o histórico no header.
+
+- **Segurança**: Regras por rota no SecurityConfig usando `hasAuthority(SCOPE_*)` conforme D8; `/payments/config` é pública (certificado de credencial, não autenticação).
+
+- **Events no consumer**: `OrderRefundRequestedConsumer` com `@KafkaListener` consome eventos de refund do order; lógica de processamento a ser completada.
+
+- **Ambiente fake**: Modo ativado quando `app.mercadopago.access-token` vazio (ou ausente com `matchIfMissing=true`); logs WARN no boot para alertar que não é produção.
+
+- **Usecases na application**: CreatePaymentUseCase (idempotência com UUID, busca ordem, validações, grava pending, chama gateway fora de transação, grava resultado e publica eventos), GetPaymentUseCase (posse), GetConfigUseCase (public key + environment), RefundPaymentUseCase (manual, valida status e saldo, publica evento), SyncPaymentUseCase (relê MP, evita regressão de status), CancelPaymentUseCase (validações), ProcessWebhookUseCase (dedupe Redis, relê MP, aplica mapper, publica eventos).
+
+- **Controllers thin**: PaymentController (traduz HTTP para usecases, valida Idempotency-Key como UUID, verifica posse) com 120 linhas. WebhookController (chamada simples a ProcessWebhookUseCase) com 20 linhas.
+
+- **Consumidor com lógica**: OrderRefundRequestedConsumer (56 linhas) processa event, valida payload, checa status, chamada RefundPaymentUseCase com chave determinística refund-{paymentId} para idempotência no MP.
+
+- **SecurityConfig atualizado**: /payments/config requer SCOPE_payments:read (sem permitAll); /internal/** requer SCOPE_internal:hydrate; webhook requer SCOPE_webhooks:ingest. Nenhuma rota pública no serviço (o gateway emite token com escopos mesmo para anônimo).
+
+### Correções da revisão
+
+- Seleção do provedor: `@ConditionalOnProperty` com regex não funciona (a anotação não aceita
+  regex), e com token configurado nenhum provedor era criado. Virou `PaymentGatewayConfig`, que
+  escolhe explicitamente entre `MercadoPagoClient` e `FakePaymentGateway` pelo token.
+- `CurrentUser` era `@RequestScope` pedindo um bean `Jwt` que não existe; passou a ler o token do
+  `SecurityContext`. O papel `owner` vem da claim `roles` (não existe autoridade `SCOPE_owner`).
+- Respostas passam por `PaymentResponse`: a chave de idempotência nunca sai na API e dinheiro vai
+  como string.
+- `GET /payments?orderId=` e `GET /payments/methods` devolviam vazio; implementados
+  (`ListPaymentsUseCase` com checagem de posse, `GetPaymentMethodsUseCase` com cache Redis de 6 h).
+  Criado `GET /internal/payments?orderId=`.
+- Removido o header fixo `Idempotency-Replayed: false`, que mentiria num replay.

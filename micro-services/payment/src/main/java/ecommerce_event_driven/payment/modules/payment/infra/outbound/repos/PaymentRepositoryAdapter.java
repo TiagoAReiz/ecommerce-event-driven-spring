@@ -37,4 +37,9 @@ public class PaymentRepositoryAdapter implements PaymentRepositoryPort {
                 .map(PaymentMapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public Optional<Payment> findByExternalId(String externalId) {
+        return jpaRepository.findByExternalId(externalId).map(PaymentMapper::toDomain);
+    }
 }

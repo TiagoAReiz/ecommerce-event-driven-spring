@@ -27,6 +27,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
+                        // Webhooks
+                        .requestMatchers("POST", "/webhooks/**").hasAuthority("SCOPE_webhooks:ingest")
+                        // Internal
+                        .requestMatchers("GET", "/internal/**").hasAuthority("SCOPE_internal:hydrate")
+                        // Refund endpoint
+                        .requestMatchers("POST", "/payments/{id}/refund").hasAuthority("SCOPE_payments:refund")
+                        // Create and cancel endpoints
+                        .requestMatchers("POST", "/payments", "/payments/{id}/cancel")
+                            .hasAuthority("SCOPE_payments:write")
+                        // Sync endpoint (can be read or refund)
+                        .requestMatchers("POST", "/payments/{id}/sync")
+                            .hasAnyAuthority("SCOPE_payments:read", "SCOPE_payments:refund")
+                        // Read endpoints (including /config)
+                        .requestMatchers("GET", "/payments/**").hasAuthority("SCOPE_payments:read")
+                        // Default: authenticated
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 // API de Bearer puro: sem sessao e sem cookie, nao existe vetor
