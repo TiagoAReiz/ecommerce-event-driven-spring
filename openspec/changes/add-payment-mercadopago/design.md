@@ -98,19 +98,15 @@ status `refunded` quando total, e grava `payment.refunded` (`full`, `origin`) na
 
 ## Decisoes de implementacao
 
-- **Estrutura de portas**: `PaymentGatewayPort` como abstração única para os adaptadores (MercadoPagoClient e FakePaymentGateway), selecionados via `@ConditionalOnProperty` baseado na presença de `app.mercadopago.access-token`.
+- **Estrutura de portas**: `PaymentGatewayPort` como abstração única para os adaptadores (MercadoPagoClient e FakePaymentGateway), escolhidos por `PaymentGatewayConfig` conforme a presença de `app.mercadopago.access-token` (ver correções da revisão).
 
 - **Outbox transacional**: `OutboxWriter` com `@Transactional(propagation = MANDATORY)` garante que eventos só são gravados se a transação do estado for commitada. Débito de Debezium para publicar via WAL.
 
-- **Controllers stub**: Implementação inicial com endpoints stub compiláveis nas tasks 4.1-4.5; lógica de negócio a ser completada em iteração posterior.
-
 - **Kafka ErrorHandler**: Retry bloqueante com ExponentialBackOff (1s, x2, max 10s, 60s total) preserva ordem por pedido. DeadLetterPublishingRecoverer envia falhas permanentes para `-dlt` com o histórico no header.
 
-- **Segurança**: Regras por rota no SecurityConfig usando `hasAuthority(SCOPE_*)` conforme D8; `/payments/config` é pública (certificado de credencial, não autenticação).
+- **Segurança**: Regras por rota no SecurityConfig usando `hasAuthority(SCOPE_*)` conforme D8; nenhuma rota anônima, `/payments/config` exige `payments:read` (o gateway emite esse escopo até para anônimo).
 
-- **Events no consumer**: `OrderRefundRequestedConsumer` com `@KafkaListener` consome eventos de refund do order; lógica de processamento a ser completada.
-
-- **Ambiente fake**: Modo ativado quando `app.mercadopago.access-token` vazio (ou ausente com `matchIfMissing=true`); logs WARN no boot para alertar que não é produção.
+- **Ambiente fake**: Modo ativado quando `app.mercadopago.access-token` vazio (ou ausente); logs WARN no boot para alertar que não é produção.
 
 - **Usecases na application**: CreatePaymentUseCase (idempotência com UUID, busca ordem, validações, grava pending, chama gateway fora de transação, grava resultado e publica eventos), GetPaymentUseCase (posse), GetConfigUseCase (public key + environment), RefundPaymentUseCase (manual, valida status e saldo, publica evento), SyncPaymentUseCase (relê MP, evita regressão de status), CancelPaymentUseCase (validações), ProcessWebhookUseCase (dedupe Redis, relê MP, aplica mapper, publica eventos).
 
