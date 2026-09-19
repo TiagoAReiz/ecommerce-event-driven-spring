@@ -18,4 +18,6 @@ public interface ProductRepositoryPort {
     Optional<Product> findById(Long id);
 
     Page<Product> findByIdCategory(Long idCategory, Pageable pageable);
+
+    long countActiveByCategory(Long idCategory);
 }

@@ -6,13 +6,14 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ProductJpaRepository extends JpaRepository<ProductEntity, Long> {
+public interface ProductJpaRepository extends JpaRepository<ProductEntity, Long>, JpaSpecificationExecutor<ProductEntity> {
 
     Optional<ProductEntity> findByIdAndDeletedAtIsNull(Long id);
 
@@ -30,4 +31,7 @@ public interface ProductJpaRepository extends JpaRepository<ProductEntity, Long>
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from ProductEntity p where p.id = :idProduct and p.deletedAt is null")
     Optional<ProductEntity> findByIdForUpdate(@Param("idProduct") Long idProduct);
+
+    @Query("select count(p) from ProductEntity p where p.categoryId = :idCategory and p.deletedAt is null")
+    long countActiveByCategory(@Param("idCategory") Long idCategory);
 }

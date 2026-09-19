@@ -3,6 +3,7 @@ package ecommerce_event_driven.inventory.modules.product.infra.outbound.repos;
 import ecommerce_event_driven.inventory.modules.product.domain.models.ReservationStatus;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.entity.StockReservationEntity;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Repository;
 public interface StockReservationJpaRepository extends JpaRepository<StockReservationEntity, Long> {
 
     boolean existsByIdOrder(Long idOrder);
+
+    List<StockReservationEntity> findByIdOrder(Long idOrder);
 
     /**
      * Quanto do produto esta segurado neste instante.
@@ -46,4 +49,21 @@ public interface StockReservationJpaRepository extends JpaRepository<StockReserv
     int updateStatusByOrder(@Param("idOrder") Long idOrder,
             @Param("from") ReservationStatus from,
             @Param("to") ReservationStatus to);
+
+    /**
+     * Soma de quantidade held (nao expirada) agrupada por idProduct.
+     * Retorna lista de pares [idProduct, totalHeld].
+     */
+    @Query("""
+            select r.idProduct, coalesce(sum(r.quantity), 0)
+              from StockReservationEntity r
+             where r.idProduct in :productIds
+               and r.status = :status
+               and r.expiresAt > :now
+             group by r.idProduct
+            """)
+    List<Object[]> sumHeldByProductIds(
+            @Param("productIds") List<Long> productIds,
+            @Param("status") ReservationStatus status,
+            @Param("now") Instant now);
 }

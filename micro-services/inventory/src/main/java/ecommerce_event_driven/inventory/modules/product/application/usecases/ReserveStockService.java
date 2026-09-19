@@ -1,7 +1,6 @@
 package ecommerce_event_driven.inventory.modules.product.application.usecases;
 
 import ecommerce_event_driven.inventory.modules.product.application.ports.inbound.usecases.ReserveStockUseCase;
-import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.messaging.StockEventPublisherPort;
 import ecommerce_event_driven.inventory.modules.product.domain.exceptions.InsufficientStockException;
 import java.util.List;
 import org.slf4j.Logger;
@@ -14,17 +13,17 @@ public class ReserveStockService implements ReserveStockUseCase {
     private static final Logger log = LoggerFactory.getLogger(ReserveStockService.class);
 
     private final StockHoldTransaction stockHold;
-    private final StockEventPublisherPort publisher;
+    private final StockRejectionTransaction stockRejection;
 
-    public ReserveStockService(StockHoldTransaction stockHold, StockEventPublisherPort publisher) {
+    public ReserveStockService(StockHoldTransaction stockHold, StockRejectionTransaction stockRejection) {
         this.stockHold = stockHold;
-        this.publisher = publisher;
+        this.stockRejection = stockRejection;
     }
 
     /**
-     * Publica so depois que hold retorna: ali o commit ja aconteceu e o lock das
-     * linhas de product ja foi solto. Dentro da transacao, a vazao de um produto
-     * passaria a depender do tempo de resposta do broker.
+     * Com outbox: a publicacao de stock.reserved entra na mesma transacao da
+     * reserva (dentro de StockHoldTransaction). A publicacao de stock.rejected
+     * vai numa transacao propria (StockRejectionTransaction) apos o rollback.
      */
     @Override
     public Result execute(Long idOrder, List<Item> items) {
@@ -32,15 +31,18 @@ public class ReserveStockService implements ReserveStockUseCase {
             Result result = stockHold.hold(idOrder, items);
 
             if (result == Result.RESERVED) {
-                publisher.publishStockReserved(idOrder);
+                // Publicacao ja foi feita dentro de hold()
+                return Result.RESERVED;
             } else {
                 log.debug("Pedido {} ja tinha reserva, evento repetido ignorado", idOrder);
+                return Result.ALREADY_RESERVED;
             }
-            return result;
 
         } catch (InsufficientStockException ex) {
+            // A transacao da reserva ja fez rollback. A recusa vai numa transacao
+            // propria: se o processo cair entre as duas, a reentrega reavalia do zero.
             log.info("Reserva recusada: {}", ex.getMessage());
-            publisher.publishStockRejected(ex.getIdOrder(), ex.getIdProduct());
+            stockRejection.record(ex.getIdOrder(), ex.getIdProduct());
             return Result.REJECTED;
         }
     }

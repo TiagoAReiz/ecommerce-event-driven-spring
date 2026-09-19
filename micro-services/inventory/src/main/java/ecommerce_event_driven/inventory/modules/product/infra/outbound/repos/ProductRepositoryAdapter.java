@@ -32,4 +32,9 @@ public class ProductRepositoryAdapter implements ProductRepositoryPort {
         return jpaRepository.findByCategoryIdAndDeletedAtIsNull(idCategory, pageable)
                 .map(ProductMapper::toDomain);
     }
+
+    @Override
+    public long countActiveByCategory(Long idCategory) {
+        return jpaRepository.countActiveByCategory(idCategory);
+    }
 }

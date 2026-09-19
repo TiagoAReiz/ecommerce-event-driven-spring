@@ -64,3 +64,43 @@ Cozinha, Esporte, Moda, Livros, Brinquedos) e slugs em kebab-case sem acento.
 
 - [Soma de reservas por lista de ids a cada busca] → índice parcial
   `stock_reservation_active_idx` já cobre; aceitável para o volume de uma loja.
+
+## Decisoes de implementacao
+
+### Controllers
+- **ProductController**: rotas públicas de vitrine (GET /products, GET /products/{id}, GET /products/{id}/availability, GET /products/{id}/photos)
+- **ProductManagementController**: rotas de gestão (GET /products/manage, POST, PUT, PATCH, DELETE /products, PATCH /products/{id}/stock, POST /products/{id}/photos)
+- **InternalProductController**: rotas de hidratação interna (GET /internal/products, GET /internal/reservations, POST confirm/release)
+
+### ProductSearchService
+- Implementa busca com JpaSpecificationExecutor
+- Facetas calculadas em memória a partir dos resultados filtrados (simplicidade)
+- Disponibilidade completada no controller via AvailabilityService (nunca cacheada)
+
+### DTOs
+- Dinheiro em BigDecimal formatado como string via @JsonFormat(shape = JsonFormat.Shape.STRING)
+- Position de foto é Short (conforme ProductPhotoEntity)
+- ProductSearchResponse, ProductDetailResponse, AvailabilityResponse, HydrationProductResponse implementadas
+
+### Validacoes
+- PhotoUrl obrigatória iniciar com https://
+- PATCH /products/{id}/stock aceita exatamente stock ou delta (nao ambos)
+- Limite de 10 fotos por produto em POST /products/{id}/photos
+
+### Seguranca
+- SecurityConfig atualizado com requestMatchers por rota e método HTTP
+- /products/manage declarado antes de /products/{id} para evitar conflito
+- /internal/** requer SCOPE_internal:hydrate
+- Sem rotas permitAll conforme design D7
+
+### Correções da revisão
+
+- Cache de categorias: o `@Cacheable` estava no controller devolvendo `ResponseEntity`, que o
+  serializador padrão do JDK não grava; nenhuma entrada chegava ao Redis. O cache foi para
+  `CategoryQueryService` (bean próprio, DTO `Serializable`) e a lista responde no envelope
+  `{content: [...]}` do contrato. Produto não é cacheado: a disponibilidade muda a cada reserva
+  e o detalhe é barato.
+- `DELETE /products/{id}` passou a devolver 409 quando há reserva `held` ativa.
+- Criadas as rotas que faltavam: `PUT /products/{id}/photos/order` e
+  `DELETE /products/{id}/photos/{photoId}`.
+- URL de foto inválida responde 422 (`UnprocessableException`), não 500.

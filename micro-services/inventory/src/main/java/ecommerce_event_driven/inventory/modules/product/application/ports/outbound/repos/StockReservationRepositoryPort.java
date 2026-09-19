@@ -1,6 +1,7 @@
 package ecommerce_event_driven.inventory.modules.product.application.ports.outbound.repos;
 
 import java.time.Instant;
+import java.util.Map;
 
 /**
  * Porta do estoque reservado. As operacoes sao do dominio, nao CRUD.
@@ -26,4 +27,12 @@ public interface StockReservationRepositoryPort {
      * @return quantas foram liberadas; 0 quando nao havia reserva ativa
      */
     int releaseHeldByOrder(Long idOrder);
+
+    /**
+     * Retorna a soma de quantidade reservada (held) e nao expirada para cada produto.
+     * Reservas com expires_at <= now() nao entram na soma.
+     * @param productIds lista de IDs de produtos
+     * @return mapa de idProduct -> quantidade reservada (0 se nenhuma reserva ativa)
+     */
+    Map<Long, Integer> sumHeldByProductIds(java.util.List<Long> productIds);
 }

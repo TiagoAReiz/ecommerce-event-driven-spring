@@ -27,6 +27,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
+                        // Rotas internas
+                        .requestMatchers("/internal/**").hasAuthority("SCOPE_internal:hydrate")
+                        // Gestao de produtos - antes de /products/{id}
+                        .requestMatchers("GET", "/products/manage").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers("POST", "/products").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers("PUT", "/products/**").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers("PATCH", "/products/**").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers("DELETE", "/products/**").hasAuthority("SCOPE_catalog:write")
+                        // Categorias - leitura publica
+                        .requestMatchers("GET", "/categories").hasAuthority("SCOPE_catalog:read")
+                        .requestMatchers("GET", "/categories/**").hasAuthority("SCOPE_catalog:read")
+                        // Produtos - leitura publica
+                        .requestMatchers("GET", "/products").hasAuthority("SCOPE_catalog:read")
+                        .requestMatchers("GET", "/products/**").hasAuthority("SCOPE_catalog:read")
+                        // Tudo o resto requer autenticacao
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 // API de Bearer puro: sem sessao e sem cookie, nao existe vetor

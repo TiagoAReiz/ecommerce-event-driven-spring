@@ -5,6 +5,8 @@ import ecommerce_event_driven.inventory.modules.product.domain.models.Reservatio
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.entity.ProductEntity;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.entity.StockReservationEntity;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
@@ -58,5 +60,22 @@ public class StockReservationRepositoryAdapter implements StockReservationReposi
     public int releaseHeldByOrder(Long idOrder) {
         return jpaRepository.updateStatusByOrder(
                 idOrder, ReservationStatus.held, ReservationStatus.released);
+    }
+
+    @Override
+    public Map<Long, Integer> sumHeldByProductIds(List<Long> productIds) {
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Object[]> results = jpaRepository.sumHeldByProductIds(
+                productIds, ReservationStatus.held, Instant.now());
+
+        Map<Long, Integer> held = results.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> ((Number) row[1]).intValue()));
+
+        return held;
     }
 }
