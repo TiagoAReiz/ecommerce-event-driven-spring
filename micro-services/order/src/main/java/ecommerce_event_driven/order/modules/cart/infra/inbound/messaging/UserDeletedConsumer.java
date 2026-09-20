@@ -31,7 +31,7 @@ public class UserDeletedConsumer {
         handler.handle(event.userId(), event.deletedAt());
     }
 
-    record UserDeletedEventDto(
+    public record UserDeletedEventDto(
             String eventId,
             java.time.Instant producedAt,
             Long userId,

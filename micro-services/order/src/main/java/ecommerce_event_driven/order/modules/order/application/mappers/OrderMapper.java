@@ -57,9 +57,11 @@ public final class OrderMapper {
                 .shipmentId(model.shipmentId())
                 .shipmentStatus(model.shipmentStatus())
                 .trackingCode(model.trackingCode())
-                .stockReservation(model.stockReservation())
+                .stockReservation(model.stockReservation() != null ? model.stockReservation() : "pending")
                 .cancelReason(model.cancelReason())
-                .refundedAmount(model.refundedAmount())
+                // Colunas NOT NULL com default no banco: o insert do JPA manda a coluna, entao o
+                // valor precisa vir preenchido daqui.
+                .refundedAmount(model.refundedAmount() != null ? model.refundedAmount() : java.math.BigDecimal.ZERO)
                 .createdAt(model.createdAt())
                 .updatedAt(model.updatedAt())
                 .build();

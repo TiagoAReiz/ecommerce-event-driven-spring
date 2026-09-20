@@ -87,7 +87,10 @@ public class OrderEventOutboxPublisher implements OrderEventPublisherPort {
                 now,
                 order.id(),
                 order.idCustomer(),
-                paymentId
+                paymentId,
+                order.items().stream()
+                        .map(item -> new OrderPaidEvent.Item(item.idProduct(), item.quantity()))
+                        .toList()
         );
 
         var message = new OutboxMessage(
@@ -111,7 +114,9 @@ public class OrderEventOutboxPublisher implements OrderEventPublisherPort {
                 eventId.toString(),
                 now,
                 order.id(),
-                order.idCustomer()
+                order.idCustomer(),
+                order.idAddress(),
+                order.freightCost()
         );
 
         var message = new OutboxMessage(
@@ -136,7 +141,12 @@ public class OrderEventOutboxPublisher implements OrderEventPublisherPort {
                 now,
                 order.id(),
                 order.idCustomer(),
-                deliveredAt
+                deliveredAt,
+                order.items().stream()
+                        .map(item -> item.idProduct())
+                        .distinct()
+                        .map(OrderDeliveredEvent.Item::new)
+                        .toList()
         );
 
         var message = new OutboxMessage(

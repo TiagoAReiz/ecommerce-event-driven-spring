@@ -1,7 +1,6 @@
 package ecommerce_event_driven.order.shared.client;
 
 import java.time.Instant;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.slf4j.Logger;
@@ -13,7 +12,6 @@ import org.slf4j.LoggerFactory;
  * Cache local ate 30s antes de expirar para evitar chamadas repetidas.
  */
 @Component
-@ConfigurationProperties(prefix = "app")
 public class ServiceTokenProvider {
     private static final Logger LOG = LoggerFactory.getLogger(ServiceTokenProvider.class);
 
@@ -39,6 +37,17 @@ public class ServiceTokenProvider {
         public void setSecret(String secret) {
             this.secret = secret;
         }
+    }
+
+    public ServiceTokenProvider(
+            @org.springframework.beans.factory.annotation.Value("${app.gateway.url}") String gatewayUrl,
+            @org.springframework.beans.factory.annotation.Value("${app.service-client.id}") String clientId,
+            @org.springframework.beans.factory.annotation.Value("${app.service-client.secret}") String clientSecret) {
+        this.gatewayUrl = gatewayUrl;
+        ServiceClientConfig config = new ServiceClientConfig();
+        config.setId(clientId);
+        config.setSecret(clientSecret);
+        this.serviceClient = config;
     }
 
     private String cachedToken;

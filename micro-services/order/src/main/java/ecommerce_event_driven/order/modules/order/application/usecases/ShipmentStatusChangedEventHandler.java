@@ -7,8 +7,6 @@ import ecommerce_event_driven.order.modules.order.domain.models.Order;
 import ecommerce_event_driven.order.modules.order.domain.models.OrderItem;
 import ecommerce_event_driven.order.modules.order.domain.models.OrderStatus;
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -105,11 +103,7 @@ public class ShipmentStatusChangedEventHandler {
                                 .build();
                         orders.save(with_status);
 
-                        // Publicar order.delivered com produtos distintos
-                        List<Long> distinctProductIds = updated_order.items().stream()
-                                .map(OrderItem::idProduct)
-                                .distinct()
-                                .collect(Collectors.toList());
+                        // O publisher monta os produtos distintos do pedido no evento.
                         publisher.publishOrderDelivered(with_status, changedAt);
 
                         log.info("Pedido {} transicionou para delivered (shipment.status.changed)", orderId);
