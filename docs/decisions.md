@@ -61,6 +61,7 @@ quebrou no caminho, e o que ficou decidido:
 | Corpo fora do contrato virava 500 | Campo obrigatório ausente responde 400, e a validação acontece antes de gravar o pagamento pendente para não queimar a `Idempotency-Key` |
 | `isOwner` fixo em `false` no cancelamento | O papel vem do token; `processing` → `cancelled` é transição da loja, como o contrato define |
 | Avaliação gravada sem nome do autor | O cliente do `user` não mandava o token de serviço e levava 401 silencioso |
+| Carrinho de conta removida continuava de pé | A limpeza filtrava por `cart_items.cart_id`, coluna inexistente: o evento morria no DLT. O log de retry passou a mostrar a causa mais específica |
 
 ## Processo
 
@@ -69,3 +70,13 @@ quebrou no caminho, e o que ficou decidido:
 | Planejamento em OpenSpec (`openspec/`): uma change por serviço/fase, com proposal, specs em delta, design e tasks validados com `openspec validate --strict` | Cada funcionalidade tem o porquê, o contrato e as tarefas rastreáveis |
 | Implementação em duas ondas; cada change num git worktree próprio | Changes da primeira onda não se tocam; a segunda depende da primeira no mesmo serviço |
 | Toda change passa por revisão antes do merge: compilação, busca de stubs e leitura dos pontos críticos | Várias entregas marcavam tarefa como concluída com resposta fixa; as correções estão na seção "Correções da revisão" de cada `design.md` |
+
+## CI
+
+| Decisão | Por quê |
+|---|---|
+| Um job por microsserviço no GitHub Actions, com `fail-fast: false` | O serviço que quebrou aparece sozinho; os outros continuam sendo testados |
+| O job sobe um Postgres de verdade | Os testes carregam o contexto Spring, que abre o pool e roda o Flyway. Banco em memória não vale: o schema usa `ENUM` e `jsonb` do Postgres |
+| Kafka fica de fora do job | O listener não bloqueia o boot: sem broker ele entra em retry e o contexto sobe igual. Subir um broker só para isso seria custo sem cobertura |
+| O gateway gera um par de chaves descartável no job | As chaves de assinatura não são versionadas; o contexto não sobe sem elas |
+| `mvnw` versionado com bit de execução | Sem ele o runner Linux para em "Permission denied" |

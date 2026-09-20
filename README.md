@@ -1,5 +1,7 @@
 # Event-Driven E-commerce Store
 
+[![CI](https://github.com/TiagoAReiz/ecommerce-event-driven-spring/actions/workflows/ci.yml/badge.svg)](https://github.com/TiagoAReiz/ecommerce-event-driven-spring/actions/workflows/ci.yml)
+
 A microservices-based online store with event-driven architecture, leveraging Kafka for asynchronous communication and Debezium for transactional outbox pattern to guarantee at-least-once event delivery.
 
 ---
