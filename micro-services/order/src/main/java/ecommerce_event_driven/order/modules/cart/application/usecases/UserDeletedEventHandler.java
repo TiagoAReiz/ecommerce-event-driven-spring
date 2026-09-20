@@ -32,7 +32,7 @@ public class UserDeletedEventHandler {
 
         // Soft delete de cart_items do usuario (via cart)
         int itemsDeleted = jdbcTemplate.update(
-                "UPDATE cart_items SET deleted_at = ? WHERE cart_id IN " +
+                "UPDATE cart_items SET deleted_at = ? WHERE id_cart IN " +
                 "(SELECT id FROM cart WHERE id_user = ? AND deleted_at IS NULL) " +
                 "AND deleted_at IS NULL",
                 deletedAtTs, userId

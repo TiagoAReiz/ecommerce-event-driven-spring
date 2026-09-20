@@ -50,7 +50,8 @@ public class KafkaConfig {
         // o retry fica invisivel e o consumo parece apenas lento.
         handler.setRetryListeners((record, ex, attempt) ->
                 log.warn("Falha ao consumir {}-{}@{} (tentativa {}): {}",
-                        record.topic(), record.partition(), record.offset(), attempt, ex.toString()));
+                        record.topic(), record.partition(), record.offset(), attempt,
+                org.springframework.core.NestedExceptionUtils.getMostSpecificCause(ex).toString()));
 
         return handler;
     }
