@@ -65,7 +65,7 @@ public class DeliveryAutoConfirmJob {
                     updated.idOrder(),
                     oldStatusName,
                     "delivered",
-                    null,
+                    updated.trackingCode(),
                     null,
                     now));
 

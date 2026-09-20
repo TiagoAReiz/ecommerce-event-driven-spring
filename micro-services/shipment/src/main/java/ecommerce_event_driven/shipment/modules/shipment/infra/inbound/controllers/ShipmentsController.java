@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -70,7 +71,7 @@ public class ShipmentsController {
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) Long orderId,
             Pageable pageable,
-            Jwt jwt) {
+            @AuthenticationPrincipal Jwt jwt) {
         CurrentUser user = new CurrentUser(jwt);
         Long userId = user.getId();
         if (userId == null) {
@@ -87,7 +88,7 @@ public class ShipmentsController {
     @PreAuthorize("hasAuthority('SCOPE_shipments:read')")
     public ResponseEntity<ShipmentDetailedResponse> get(
             @PathVariable Long id,
-            Jwt jwt) {
+            @AuthenticationPrincipal Jwt jwt) {
         CurrentUser user = new CurrentUser(jwt);
         Long userId = user.getId();
 
@@ -108,7 +109,7 @@ public class ShipmentsController {
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) Long orderId,
             Pageable pageable,
-            Jwt jwt) {
+            @AuthenticationPrincipal Jwt jwt) {
         CurrentUser user = new CurrentUser(jwt);
         if (!user.hasRole("owner")) {
             throw new ForbiddenException("Apenas o dono pode acessar");
@@ -127,7 +128,7 @@ public class ShipmentsController {
     public ResponseEntity<Void> updateStatus(
             @PathVariable Long id,
             @RequestBody UpdateShipmentRequest request,
-            Jwt jwt) throws JsonProcessingException {
+            @AuthenticationPrincipal Jwt jwt) throws JsonProcessingException {
         CurrentUser user = new CurrentUser(jwt);
         if (!user.hasRole("owner")) {
             throw new ForbiddenException("Apenas o dono pode atualizar");
@@ -175,7 +176,7 @@ public class ShipmentsController {
             updated.idOrder(),
             oldStatusName,
             request.status(),
-            null,
+            updated.trackingCode(),
             null,
             now));
 
@@ -187,7 +188,7 @@ public class ShipmentsController {
     @Transactional
     public ResponseEntity<Void> confirmDelivery(
             @PathVariable Long id,
-            Jwt jwt) throws JsonProcessingException {
+            @AuthenticationPrincipal Jwt jwt) throws JsonProcessingException {
         CurrentUser user = new CurrentUser(jwt);
         Long userId = user.getId();
 
@@ -226,7 +227,7 @@ public class ShipmentsController {
             updated.idOrder(),
             oldStatusName,
             "delivered",
-            null,
+            updated.trackingCode(),
             null,
             now));
 
@@ -239,7 +240,7 @@ public class ShipmentsController {
     public ResponseEntity<Void> cancel(
             @PathVariable Long id,
             @RequestBody CancelShipmentRequest request,
-            Jwt jwt) throws JsonProcessingException {
+            @AuthenticationPrincipal Jwt jwt) throws JsonProcessingException {
         CurrentUser user = new CurrentUser(jwt);
         if (!user.hasRole("owner")) {
             throw new ForbiddenException("Apenas o dono pode cancelar");
@@ -280,7 +281,7 @@ public class ShipmentsController {
             updated.idOrder(),
             oldStatusName,
             "cancelled",
-            null,
+            updated.trackingCode(),
             null,
             now));
 
@@ -335,7 +336,7 @@ public class ShipmentsController {
                 saved.idOrder(),
                 null,
                 "pending",
-                null,
+                saved.trackingCode(),
                 null,
                 now));
 

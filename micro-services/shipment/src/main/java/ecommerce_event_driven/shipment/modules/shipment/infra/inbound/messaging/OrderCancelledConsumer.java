@@ -56,7 +56,7 @@ public class OrderCancelledConsumer {
                     updated.idOrder(),
                     status.name(),
                     "cancelled",
-                    null,
+                    updated.trackingCode(),
                     null,
                     now));
         } else if (status == ShipmentStatus.in_transit || status == ShipmentStatus.out_for_delivery) {
