@@ -5,6 +5,7 @@ import ecommerce_event_driven.api_gateway.modules.auth.application.ports.outboun
 import jakarta.validation.Valid;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -63,10 +64,13 @@ public class ServiceTokenController {
 
         // Emite token de servico
         IssuedToken token = tokenIssuer.issueForService(request.clientId());
+        // expiresIn sai do proprio token: um valor fixo aqui faria o chamador cachear
+        // um token ja vencido e receber 401 nas chamadas seguintes.
+        long expiresIn = Math.max(0, token.expiresAt().getEpochSecond() - Instant.now().getEpochSecond());
         ServiceTokenResponse response = new ServiceTokenResponse(
                 token.value(),
                 "Bearer",
-                300L,  // 5 minutos em segundos
+                expiresIn,
                 null);
 
         return ResponseEntity.ok(response);

@@ -16,7 +16,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -207,9 +207,14 @@ public class ProxyController {
     }
 
     private RestClient buildRestClient(String baseUrl, String pathSegment) {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(routeTable.connectTimeoutMillis());
-        factory.setReadTimeout(routeTable.readTimeoutMillis(pathSegment));
+        // JdkClientHttpRequestFactory, nao SimpleClientHttpRequestFactory: o HttpURLConnection
+        // que o Simple usa recusa PATCH ("Invalid HTTP method: PATCH") e derrubaria toda rota
+        // PATCH do produto em 503.
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
+                java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(java.time.Duration.ofMillis(routeTable.connectTimeoutMillis()))
+                        .build());
+        factory.setReadTimeout(java.time.Duration.ofMillis(routeTable.readTimeoutMillis(pathSegment)));
         return RestClient.builder()
                 .baseUrl(baseUrl)
                 .requestFactory(factory)
