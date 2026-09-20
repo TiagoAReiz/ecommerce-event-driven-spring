@@ -33,6 +33,7 @@ public class UserServiceClient {
         return userClient
                 .get()
                 .uri("/internal/users?ids={ids}", idList)
+                .header("Authorization", "Bearer " + tokenProvider.getToken())
                 .retrieve()
                 .body(UserBatchResponse.class);
     }
@@ -44,6 +45,7 @@ public class UserServiceClient {
         return userClient
                 .get()
                 .uri("/internal/users/{id}/profile", userId)
+                .header("Authorization", "Bearer " + tokenProvider.getToken())
                 .retrieve()
                 .body(UserProfileResponse.class);
     }

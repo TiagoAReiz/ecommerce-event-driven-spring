@@ -1,6 +1,7 @@
 package ecommerce_event_driven.inventory.modules.product.application.usecases;
 
 import ecommerce_event_driven.inventory.modules.product.application.ports.inbound.usecases.CommitStockUseCase;
+import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.messaging.StockEventPublisherPort;
 import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.repos.StockReservationRepositoryPort;
 import ecommerce_event_driven.inventory.modules.product.domain.models.ReservationStatus;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductJpaRepository;
@@ -26,12 +27,15 @@ class StockCommitTransaction {
 
     private final StockReservationJpaRepository jpaRepository;
     private final ProductJpaRepository productJpaRepository;
+    private final StockEventPublisherPort publisher;
 
     StockCommitTransaction(
             StockReservationJpaRepository jpaRepository,
-            ProductJpaRepository productJpaRepository) {
+            ProductJpaRepository productJpaRepository,
+            StockEventPublisherPort publisher) {
         this.jpaRepository = jpaRepository;
         this.productJpaRepository = productJpaRepository;
+        this.publisher = publisher;
     }
 
     /**
@@ -65,6 +69,10 @@ class StockCommitTransaction {
             }
         }
 
+        // O evento sai na mesma transacao da baixa: a outbox so aceita escrita dentro de
+        // transacao, e publicar depois do commit abriria a janela de estoque baixado sem
+        // stock.committed -- a reentrega cairia em ALREADY_COMMITTED e o evento sumiria.
+        publisher.publishStockCommitted(idOrder);
         return CommitStockService.CommitResult.OK;
     }
 

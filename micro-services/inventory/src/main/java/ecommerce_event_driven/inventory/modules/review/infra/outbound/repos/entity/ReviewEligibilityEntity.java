@@ -29,9 +29,6 @@ public class ReviewEligibilityEntity {
     @Column(name = "granted_at", nullable = false)
     private Instant grantedAt;
 
-    @Generated(event = { EventType.INSERT, EventType.UPDATE })
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
 
     // Propriedades de conveniencia para acessar a chave composta
     public Long getIdUser() {

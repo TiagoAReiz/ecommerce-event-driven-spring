@@ -45,7 +45,7 @@ public interface ReviewJpaRepository extends JpaRepository<ReviewEntity, Long> {
      * Busca reviews nao deletadas por rate.
      */
     Page<ReviewEntity> findByIdProductAndRateAndDeletedAtIsNullOrderByCreatedAtDesc(
-            Long idProduct, Integer rate, Pageable pageable);
+            Long idProduct, Short rate, Pageable pageable);
 
     /**
      * Busca todas as reviews do usuario nao deletadas.
@@ -85,7 +85,7 @@ public interface ReviewJpaRepository extends JpaRepository<ReviewEntity, Long> {
                and r.rate = :rate
                and r.deletedAt is null
             """)
-    Long countByProductAndRate(@Param("idProduct") Long idProduct, @Param("rate") Integer rate);
+    Long countByProductAndRate(@Param("idProduct") Long idProduct, @Param("rate") Short rate);
 
     /**
      * Soft delete de uma review.
@@ -106,7 +106,7 @@ public interface ReviewJpaRepository extends JpaRepository<ReviewEntity, Long> {
             """)
     int updateReview(
             @Param("id") Long id,
-            @Param("rate") Integer rate,
+            @Param("rate") Short rate,
             @Param("title") String title,
             @Param("description") String description);
 

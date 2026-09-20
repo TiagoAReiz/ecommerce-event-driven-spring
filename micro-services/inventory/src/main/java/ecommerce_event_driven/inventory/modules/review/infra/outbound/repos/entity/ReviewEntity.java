@@ -39,7 +39,7 @@ public class ReviewEntity {
     private Long idOrder;
 
     @Column(name = "rate", nullable = false)
-    private Integer rate;
+    private Short rate;
 
     @Column(name = "title", nullable = false, length = 150)
     private String title;

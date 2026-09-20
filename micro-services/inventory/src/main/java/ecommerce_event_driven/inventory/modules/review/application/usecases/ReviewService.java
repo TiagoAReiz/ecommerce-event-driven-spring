@@ -68,11 +68,11 @@ public class ReviewService {
 
         Page<ReviewEntity> page = rate == null
                 ? reviews.findByIdProductAndDeletedAtIsNullOrderByCreatedAtDesc(idProduct, pageable)
-                : reviews.findByIdProductAndRateAndDeletedAtIsNullOrderByCreatedAtDesc(idProduct, rate, pageable);
+                : reviews.findByIdProductAndRateAndDeletedAtIsNullOrderByCreatedAtDesc(idProduct, rate.shortValue(), pageable);
 
         Map<Integer, Long> distribution = new LinkedHashMap<>();
         for (int nota = 5; nota >= 1; nota--) {
-            distribution.put(nota, reviews.countByProductAndRate(idProduct, nota));
+            distribution.put(nota, reviews.countByProductAndRate(idProduct, (short) nota));
         }
 
         var summary = new ReviewsWithSummaryResponse.SummaryResponse(
@@ -151,7 +151,7 @@ public class ReviewService {
                 .userPhotoUrl(photoUrl)
                 .idProduct(idProduct)
                 .idOrder(request.idOrder())
-                .rate(request.rate())
+                .rate(request.rate().shortValue())
                 .title(request.title())
                 .description(request.description())
                 .build());
@@ -174,7 +174,7 @@ public class ReviewService {
         }
 
         if (request.rate() != null) {
-            review.setRate(request.rate());
+            review.setRate(request.rate().shortValue());
         }
         if (request.title() != null) {
             review.setTitle(request.title());
@@ -237,7 +237,7 @@ public class ReviewService {
                 : null;
         return new ReviewResponse(
                 review.getId(),
-                review.getRate(),
+                review.getRate() == null ? null : review.getRate().intValue(),
                 review.getTitle(),
                 review.getDescription(),
                 new ReviewResponse.AuthorSnapshot(review.getIdUser(), review.getUserName(), review.getUserPhotoUrl()),

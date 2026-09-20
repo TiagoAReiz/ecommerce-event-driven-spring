@@ -1,5 +1,7 @@
 package ecommerce_event_driven.inventory.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,6 +17,8 @@ import org.apache.kafka.common.TopicPartition;
  */
 @Configuration
 public class KafkaConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(KafkaConfig.class);
 
     /**
      * Error handler bloqueante com retry exponencial e DLT (Dead Letter Topic).
@@ -37,6 +41,12 @@ public class KafkaConfig {
         handler.addNotRetryableExceptions(
                 InvalidEventException.class,
                 DataIntegrityViolationException.class);
+        // Sem isto a falha de consumo so aparece quando o registro vai para o DLT:
+        // o retry fica invisivel e o consumo parece apenas lento.
+        handler.setRetryListeners((record, ex, attempt) ->
+                log.warn("Falha ao consumir {}-{}@{} (tentativa {}): {}",
+                        record.topic(), record.partition(), record.offset(), attempt, ex.toString()));
+
         return handler;
     }
 

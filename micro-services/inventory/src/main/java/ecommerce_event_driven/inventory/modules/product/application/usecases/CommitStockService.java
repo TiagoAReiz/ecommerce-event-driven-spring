@@ -1,7 +1,6 @@
 package ecommerce_event_driven.inventory.modules.product.application.usecases;
 
 import ecommerce_event_driven.inventory.modules.product.application.ports.inbound.usecases.CommitStockUseCase;
-import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.messaging.StockEventPublisherPort;
 import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.repos.StockReservationRepositoryPort;
 import java.util.List;
 import org.slf4j.Logger;
@@ -23,15 +22,10 @@ public class CommitStockService implements CommitStockUseCase {
 
     private final StockCommitTransaction stockCommit;
     private final CommitFailureTransaction commitFailure;
-    private final StockEventPublisherPort publisher;
 
-    public CommitStockService(
-            StockCommitTransaction stockCommit,
-            CommitFailureTransaction commitFailure,
-            StockEventPublisherPort publisher) {
+    public CommitStockService(StockCommitTransaction stockCommit, CommitFailureTransaction commitFailure) {
         this.stockCommit = stockCommit;
         this.commitFailure = commitFailure;
-        this.publisher = publisher;
     }
 
     /**
@@ -45,8 +39,7 @@ public class CommitStockService implements CommitStockUseCase {
 
         switch (result) {
             case OK:
-                // Publica stock.committed na mesma transacao do commit
-                publisher.publishStockCommitted(idOrder);
+                // stock.committed ja foi gravado na outbox dentro da transacao do commit
                 log.info("Estoque commitado do pedido {}", idOrder);
                 return Result.COMMITTED;
 

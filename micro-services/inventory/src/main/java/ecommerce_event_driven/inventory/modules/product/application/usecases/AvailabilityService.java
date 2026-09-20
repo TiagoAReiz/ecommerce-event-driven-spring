@@ -16,8 +16,12 @@ import ecommerce_event_driven.inventory.modules.product.domain.models.Product;
 public class AvailabilityService {
 
     private final StockReservationRepositoryPort reservations;
+    private final ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductJpaRepository products;
 
-    public AvailabilityService(StockReservationRepositoryPort reservations) {
+    public AvailabilityService(
+            StockReservationRepositoryPort reservations,
+            ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductJpaRepository products) {
+        this.products = products;
         this.reservations = reservations;
     }
 
@@ -52,9 +56,13 @@ public class AvailabilityService {
      * Retorna a disponibilidade simples para um produto (int).
      */
     public int getAvailability(Long idProduct) {
+        Integer stock = products.findById(idProduct)
+                .filter(product -> product.getDeletedAt() == null)
+                .map(product -> product.getStock())
+                .orElse(0);
         Map<Long, Integer> held = reservations.sumHeldByProductIds(List.of(idProduct));
-        int heldQty = held.getOrDefault(idProduct, 0);
-        return Math.max(0, -heldQty);
+        // Disponivel = estoque - o que esta segurado por reserva ainda valida.
+        return Math.max(0, stock - held.getOrDefault(idProduct, 0));
     }
 
     /**
@@ -75,9 +83,13 @@ public class AvailabilityService {
      * Retorna info detalhada de disponibilidade (held + available).
      */
     public DetailedAvailability getDetailedAvailability(Long idProduct) {
+        Integer stock = products.findById(idProduct)
+                .filter(product -> product.getDeletedAt() == null)
+                .map(product -> product.getStock())
+                .orElse(0);
         Map<Long, Integer> held = reservations.sumHeldByProductIds(List.of(idProduct));
         int heldQty = held.getOrDefault(idProduct, 0);
-        return new DetailedAvailability(heldQty, Math.max(0, -heldQty));
+        return new DetailedAvailability(heldQty, Math.max(0, stock - heldQty));
     }
 
     public record DetailedAvailability(int held, int available) {}
