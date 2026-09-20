@@ -228,8 +228,9 @@ public class OrderController {
             throw new BadRequestException("REASON_TOO_LONG", "Razao nao pode exceder 500 caracteres");
         }
 
-        // Executar cancelamento
-        cancelOrderService.execute(id, userId, request.reason(), false);
+        // O papel vem do token: processing so a loja cancela (docs/api-contracts.md, §8 cancel).
+        boolean isOwner = currentUser.getRoles(token.getToken()).contains("owner");
+        cancelOrderService.execute(id, userId, request.reason(), isOwner);
 
         // Recarregar e retornar pedido atualizado
         OrderDetailResponse result = getMyOrderUseCase.execute(id, userId);

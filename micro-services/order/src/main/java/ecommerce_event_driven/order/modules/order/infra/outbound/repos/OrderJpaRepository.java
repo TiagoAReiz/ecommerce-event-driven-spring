@@ -26,6 +26,39 @@ public interface OrderJpaRepository extends JpaRepository<OrderEntity, Long> {
      * origem, o que torna a transicao idempotente: evento repetido do Kafka
      * nao cancela um pedido que ja foi pago.
      */
+    /** Atualiza so a projecao do pagamento, pelo mesmo motivo da projecao do envio. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update OrderEntity o
+               set o.paymentStatus = coalesce(:paymentStatus, o.paymentStatus),
+                   o.refundedAmount = :refundedAmount
+             where o.id = :idOrder
+            """)
+    int updatePaymentProjection(
+            @Param("idOrder") Long idOrder,
+            @Param("paymentStatus") String paymentStatus,
+            @Param("refundedAmount") java.math.BigDecimal refundedAmount);
+
+    /**
+     * Atualiza so a projecao do envio.
+     *
+     * <p>Salvar o pedido inteiro aqui sobrescreveria o status com o valor lido antes do
+     * evento: o estorno que chega em paralelo voltaria de refunded para cancelled.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update OrderEntity o
+               set o.shipmentId = :idShipment,
+                   o.shipmentStatus = :shipmentStatus,
+                   o.trackingCode = coalesce(:trackingCode, o.trackingCode)
+             where o.id = :idOrder
+            """)
+    int updateShipmentProjection(
+            @Param("idOrder") Long idOrder,
+            @Param("idShipment") Long idShipment,
+            @Param("shipmentStatus") String shipmentStatus,
+            @Param("trackingCode") String trackingCode);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update OrderEntity o

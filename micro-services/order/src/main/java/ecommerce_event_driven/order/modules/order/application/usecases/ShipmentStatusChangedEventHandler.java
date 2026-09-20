@@ -40,24 +40,22 @@ public class ShipmentStatusChangedEventHandler {
             return;
         }
 
-        // Atualizar projecao base (shipment_id, shipment_status, tracking_code)
-        Order with_shipment = order.toBuilder()
-                .shipmentId(shipmentId)
-                .shipmentStatus(to)
-                .trackingCode(trackingCode != null ? trackingCode : order.trackingCode())
-                .build();
+        // Projecao do envio (shipment_id, shipment_status, tracking_code) em update proprio:
+        // salvar o pedido inteiro sobrescreveria o status lido antes do evento.
+        Runnable saveShipmentProjection =
+                () -> orders.updateShipmentProjection(orderId, shipmentId, to, trackingCode);
 
         // Decidir se muda o status do pedido
         switch (to) {
             case "pending":
                 // Primeira transicao: so atualiza projecao
-                orders.save(with_shipment);
+                saveShipmentProjection.run();
                 log.debug("Envio criado para pedido {}: shipmentId {}", orderId, shipmentId);
                 break;
 
             case "ready_to_ship":
                 // So atualiza projecao
-                orders.save(with_shipment);
+                saveShipmentProjection.run();
                 log.debug("Envio ready_to_ship para pedido {}", orderId);
                 break;
 
@@ -66,27 +64,21 @@ public class ShipmentStatusChangedEventHandler {
                 if (order.status() == OrderStatus.processing) {
                     boolean updated = orders.updateStatus(orderId, OrderStatus.processing, OrderStatus.shipped);
                     if (updated) {
-                        Order updated_order = orders.findById(orderId)
-                                .orElseThrow(() -> new InvalidEventException("Pedido " + orderId + " nao encontrado"));
-                        Order with_status = updated_order.toBuilder()
-                                .shipmentStatus(to)
-                                .trackingCode(trackingCode != null ? trackingCode : order.trackingCode())
-                                .build();
-                        orders.save(with_status);
+                        saveShipmentProjection.run();
                         log.info("Pedido {} transicionou processing -> shipped (in_transit)", orderId);
                     } else {
                         log.debug("in_transit nao atualizou pedido {}: ja nao esta em processing", orderId);
                     }
                 } else {
                     // Estado a frente ou ja shipped: so atualiza projecao
-                    orders.save(with_shipment);
+                    saveShipmentProjection.run();
                     log.debug("in_transit nao altera status do pedido {} (estado atual: {})", orderId, order.status());
                 }
                 break;
 
             case "out_for_delivery":
                 // So atualiza projecao
-                orders.save(with_shipment);
+                saveShipmentProjection.run();
                 log.debug("Envio out_for_delivery para pedido {}", orderId);
                 break;
 
@@ -97,11 +89,12 @@ public class ShipmentStatusChangedEventHandler {
                     if (updated) {
                         Order updated_order = orders.findById(orderId)
                                 .orElseThrow(() -> new InvalidEventException("Pedido " + orderId + " nao encontrado"));
+                        saveShipmentProjection.run();
                         Order with_status = updated_order.toBuilder()
                                 .shipmentStatus(to)
                                 .trackingCode(trackingCode != null ? trackingCode : order.trackingCode())
+                                .shipmentId(shipmentId)
                                 .build();
-                        orders.save(with_status);
 
                         // O publisher monta os produtos distintos do pedido no evento.
                         publisher.publishOrderDelivered(with_status, changedAt);
@@ -117,7 +110,7 @@ public class ShipmentStatusChangedEventHandler {
 
             case "returned":
                 // So atualiza projecao
-                orders.save(with_shipment);
+                saveShipmentProjection.run();
                 log.debug("Envio returned para pedido {}", orderId);
                 break;
 
@@ -128,10 +121,7 @@ public class ShipmentStatusChangedEventHandler {
                     if (updated) {
                         Order updated_order = orders.findById(orderId)
                                 .orElseThrow(() -> new InvalidEventException("Pedido " + orderId + " nao encontrado"));
-                        Order with_status = updated_order.toBuilder()
-                                .shipmentStatus(to)
-                                .build();
-                        orders.save(with_status);
+                        saveShipmentProjection.run();
 
                         // Publicar order.cancelled e order.refund.requested
                         publisher.publishOrderCancelled(orderId, updated_order.idCustomer(), "envio cancelado");
@@ -144,10 +134,14 @@ public class ShipmentStatusChangedEventHandler {
                         log.debug("shipment cancelled nao atualizou pedido {}: ja nao esta em processing", orderId);
                     }
                 } else if (order.status() == OrderStatus.cancelled) {
-                    // Echo do cancelamento que o proprio pedido publicou: ignorar
-                    log.debug("shipment.status.changed cancelled ignorado: e eco do cancelamento do pedido {}", orderId);
+                    // Eco do cancelamento que o proprio pedido publicou: o status do pedido nao
+                    // muda, mas a projecao do envio sim -- senao o pedido cancelado mostra o
+                    // envio como pending para sempre.
+                    saveShipmentProjection.run();
+                    log.debug("shipment.status.changed cancelled: eco do cancelamento do pedido {}", orderId);
                 } else {
-                    log.debug("shipment cancelled ignorado para pedido {} em estado {}", orderId, order.status());
+                    saveShipmentProjection.run();
+                    log.debug("shipment cancelled nao altera status do pedido {} (estado atual: {})", orderId, order.status());
                 }
                 break;
 

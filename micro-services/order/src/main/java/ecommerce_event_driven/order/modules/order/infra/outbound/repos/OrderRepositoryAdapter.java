@@ -74,6 +74,20 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
         return jpaRepository.updateStatus(idOrder, from, to) == 1;
     }
 
+    @Override
+    @Transactional
+    public void updatePaymentProjection(
+            Long idOrder, String paymentStatus, java.math.BigDecimal refundedAmount) {
+        jpaRepository.updatePaymentProjection(idOrder, paymentStatus, refundedAmount);
+    }
+
+    @Override
+    @Transactional
+    public void updateShipmentProjection(
+            Long idOrder, Long idShipment, String shipmentStatus, String trackingCode) {
+        jpaRepository.updateShipmentProjection(idOrder, idShipment, shipmentStatus, trackingCode);
+    }
+
     private Order withItems(OrderEntity entity) {
         List<OrderItem> items = itemJpaRepository.findByOrderId(entity.getId()).stream()
                 .map(OrderItemMapper::toDomain)

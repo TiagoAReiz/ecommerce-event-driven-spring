@@ -44,10 +44,7 @@ public class PaymentRefundedEventHandler {
         // Estorno parcial: so atualizar projecao
         if (!full) {
             BigDecimal current = order.refundedAmount() != null ? order.refundedAmount() : BigDecimal.ZERO;
-            Order with_refunded = order.toBuilder()
-                    .refundedAmount(current.add(totalRefunded))
-                    .build();
-            orders.save(with_refunded);
+            orders.updatePaymentProjection(orderId, null, current.add(totalRefunded));
             log.info("Projecao refunded_amount atualizada para pedido {}: +{}", orderId, totalRefunded);
             return;
         }
@@ -61,13 +58,9 @@ public class PaymentRefundedEventHandler {
                 return;
             }
 
-            Order updated_order = orders.findById(orderId)
-                    .orElseThrow(() -> new InvalidEventException("Pedido " + orderId + " nao encontrado"));
-
-            Order with_refunded = updated_order.toBuilder()
-                    .refundedAmount(totalRefunded)
-                    .build();
-            orders.save(with_refunded);
+            // A projecao tem que acompanhar: sem isso o pedido aparece refunded com o
+            // pagamento ainda "captured" na resposta da API.
+            orders.updatePaymentProjection(orderId, "refunded", totalRefunded);
 
             log.info("Pedido {} transicionou para refunded com amount {}", orderId, totalRefunded);
 
@@ -92,13 +85,7 @@ public class PaymentRefundedEventHandler {
                 return;
             }
 
-            Order refunded_order = orders.findById(orderId)
-                    .orElseThrow(() -> new InvalidEventException("Pedido " + orderId + " nao encontrado apos refund"));
-
-            Order with_refunded = refunded_order.toBuilder()
-                    .refundedAmount(totalRefunded)
-                    .build();
-            orders.save(with_refunded);
+            orders.updatePaymentProjection(orderId, "refunded", totalRefunded);
 
             log.info("Pedido {} transicionou paid/processing -> cancelled -> refunded com amount {}", orderId, totalRefunded);
         }

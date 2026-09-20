@@ -34,4 +34,10 @@ public interface OrderRepositoryPort {
      * @return false se o pedido ja nao estava em {@code from}
      */
     boolean updateStatus(Long idOrder, OrderStatus from, OrderStatus to);
+
+    /** Atualiza so as colunas de projecao do pagamento, sem tocar no status do pedido. */
+    void updatePaymentProjection(Long idOrder, String paymentStatus, java.math.BigDecimal refundedAmount);
+
+    /** Atualiza so as colunas de projecao do envio, sem tocar no status do pedido. */
+    void updateShipmentProjection(Long idOrder, Long idShipment, String shipmentStatus, String trackingCode);
 }
