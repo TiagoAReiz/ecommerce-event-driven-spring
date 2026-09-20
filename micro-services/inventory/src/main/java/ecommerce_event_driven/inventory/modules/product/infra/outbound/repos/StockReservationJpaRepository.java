@@ -66,4 +66,33 @@ public interface StockReservationJpaRepository extends JpaRepository<StockReserv
             @Param("productIds") List<Long> productIds,
             @Param("status") ReservationStatus status,
             @Param("now") Instant now);
+
+    /**
+     * Encontra reservas held do pedido, independente de expirado.
+     */
+    @Query("""
+            select r.idProduct, r.quantity
+              from StockReservationEntity r
+             where r.idOrder = :idOrder
+               and r.status = :status
+            """)
+    List<Object[]> findByOrderAndStatus(
+            @Param("idOrder") Long idOrder,
+            @Param("status") ReservationStatus status);
+
+    /**
+     * Incrementa stock de todos os produtos com reservas confirmed do pedido
+     * e move reserva para released.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update StockReservationEntity r
+               set r.status = :to
+             where r.idOrder = :idOrder
+               and r.status = :from
+            """)
+    int updateConfirmedToReleasedByOrder(
+            @Param("idOrder") Long idOrder,
+            @Param("from") ReservationStatus from,
+            @Param("to") ReservationStatus to);
 }

@@ -13,9 +13,13 @@ public class ReleaseReservationService implements ReleaseReservationUseCase {
     private static final Logger log = LoggerFactory.getLogger(ReleaseReservationService.class);
 
     private final StockReservationRepositoryPort reservations;
+    private final ReleaseConfirmedStockTransaction releaseConfirmedStock;
 
-    public ReleaseReservationService(StockReservationRepositoryPort reservations) {
+    public ReleaseReservationService(
+            StockReservationRepositoryPort reservations,
+            ReleaseConfirmedStockTransaction releaseConfirmedStock) {
         this.reservations = reservations;
+        this.releaseConfirmedStock = releaseConfirmedStock;
     }
 
     /**
@@ -32,6 +36,22 @@ public class ReleaseReservationService implements ReleaseReservationUseCase {
         }
 
         log.info("Reservas liberadas do pedido {}: {}", idOrder, released);
+        return Result.RELEASED;
+    }
+
+    /**
+     * Libera reservas confirmed (pedido cancelado apos pagamento).
+     * Devolve o estoque que foi debitado.
+     */
+    @Transactional
+    public Result releaseConfirmedStock(Long idOrder) {
+        int released = releaseConfirmedStock.releaseConfirmed(idOrder);
+        if (released == 0) {
+            log.debug("Pedido {} nao tinha reserva confirmed, nada a liberar", idOrder);
+            return Result.NOTHING_TO_RELEASE;
+        }
+
+        log.info("Estoque devolvido do pedido {} (confirmed -> released): {} items", idOrder, released);
         return Result.RELEASED;
     }
 }

@@ -29,34 +29,29 @@ public class ReviewEntity {
     @Column(name = "id")
     private Long id;
 
-    /** Servico user, sem FK. */
     @Column(name = "id_user", nullable = false)
     private Long idUser;
 
-    /** [snapshot] */
-    @Column(name = "user_name", length = 150)
-    private String userName;
-
-    /** [snapshot] */
-    @Column(name = "user_photo_url")
-    private String userPhotoUrl;
-
-    /** FK para product(id). Mantida como id puro: outro modulo, outra fronteira. */
     @Column(name = "id_product", nullable = false)
     private Long idProduct;
 
-    /** Servico order, sem FK. */
     @Column(name = "id_order", nullable = false)
     private Long idOrder;
 
     @Column(name = "rate", nullable = false)
-    private Short rate;
+    private Integer rate;
 
-    @Column(name = "title", length = 150)
+    @Column(name = "title", nullable = false, length = 150)
     private String title;
 
     @Column(name = "description")
     private String description;
+
+    @Column(name = "user_name", nullable = false)
+    private String userName;
+
+    @Column(name = "user_photo_url")
+    private String userPhotoUrl;
 
     @Generated(event = EventType.INSERT)
     @Column(name = "created_at", nullable = false)

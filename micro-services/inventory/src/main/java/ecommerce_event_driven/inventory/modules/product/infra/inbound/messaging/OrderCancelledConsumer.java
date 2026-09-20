@@ -18,6 +18,10 @@ public class OrderCancelledConsumer implements OrderCancelledConsumerPort {
     @Override
     @KafkaListener(topics = "ecommerce.order.cancelled.v1", groupId = "inventory")
     public void onOrderCancelled(OrderCancelledEvent orderCancelledEvent) {
+        // Libera held (cancelamento antes de pagamento)
         releaseReservation.execute(orderCancelledEvent.orderId());
+
+        // Libera confirmed e devolve estoque (cancelamento apos pagamento)
+        releaseReservation.releaseConfirmedStock(orderCancelledEvent.orderId());
     }
 }

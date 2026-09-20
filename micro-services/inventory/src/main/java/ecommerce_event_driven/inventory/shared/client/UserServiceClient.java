@@ -48,12 +48,12 @@ public class UserServiceClient {
                 .body(UserProfileResponse.class);
     }
 
-    record UserBatchResponse(List<UserInfo> users, List<Long> missing) {
+    public record UserBatchResponse(List<UserInfo> users, List<Long> missing) {
     }
 
-    record UserInfo(Long id, String name, String photoUrl) {
+    public record UserInfo(Long id, String name, String photoUrl) {
     }
 
-    record UserProfileResponse(Long id, String name, String email, String photoUrl, List<String> roles) {
+    public record UserProfileResponse(Long id, String name, String email, String photoUrl, List<String> roles) {
     }
 }

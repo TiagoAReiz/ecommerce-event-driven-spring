@@ -35,4 +35,24 @@ public interface StockReservationRepositoryPort {
      * @return mapa de idProduct -> quantidade reservada (0 se nenhuma reserva ativa)
      */
     Map<Long, Integer> sumHeldByProductIds(java.util.List<Long> productIds);
+
+    /**
+     * Muda status de reserva do pedido de held para confirmed.
+     * Mesmo que a reserva tenha expirado, o commit acontece se houver disponivel.
+     * @return true se atualizou, false se nenhuma reserva estava held
+     */
+    boolean confirmHeldByOrder(Long idOrder);
+
+    /**
+     * Muda status de reserva do pedido de confirmed para released,
+     * junto com incremento de estoque do produto.
+     * @return true se atualizou, false se nenhuma reserva estava confirmed
+     */
+    boolean releaseConfirmedByOrder(Long idOrder);
+
+    /**
+     * Encontra reservas held ativas do pedido, mesmo expiradas.
+     * @return lista de [idProduct, quantity] para reservas held do pedido
+     */
+    java.util.List<Object[]> findHeldByOrder(Long idOrder);
 }

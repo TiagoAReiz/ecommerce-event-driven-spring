@@ -30,6 +30,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // Rotas internas
                         .requestMatchers("/internal/**").hasAuthority("SCOPE_internal:hydrate")
+                        // Avaliacoes - antes das regras gerais de /products/**
+                        .requestMatchers(HttpMethod.GET, "/reviews/mine").hasAuthority("SCOPE_reviews:read")
+                        .requestMatchers(HttpMethod.GET, "/reviews/pending").hasAuthority("SCOPE_reviews:read")
+                        .requestMatchers(HttpMethod.GET, "/reviews/**")
+                            .hasAnyAuthority("SCOPE_catalog:read", "SCOPE_reviews:read")
+                        .requestMatchers(HttpMethod.GET, "/products/*/reviews")
+                            .hasAnyAuthority("SCOPE_catalog:read", "SCOPE_reviews:read")
+                        .requestMatchers(HttpMethod.POST, "/products/*/reviews").hasAuthority("SCOPE_reviews:write")
+                        .requestMatchers(HttpMethod.PATCH, "/reviews/**").hasAuthority("SCOPE_reviews:write")
+                        .requestMatchers(HttpMethod.DELETE, "/reviews/**").hasAuthority("SCOPE_reviews:write")
                         // Gestao de produtos - antes de /products/{id}
                         .requestMatchers(HttpMethod.GET, "/products/manage").hasAuthority("SCOPE_catalog:write")
                         .requestMatchers(HttpMethod.POST, "/products").hasAuthority("SCOPE_catalog:write")

@@ -5,6 +5,12 @@ public interface ReleaseReservationUseCase {
 
     Result execute(Long idOrder);
 
+    /**
+     * Libera estoque confirmed (cancelamento apos pagamento).
+     * Devolve o que foi debitado.
+     */
+    Result releaseConfirmedStock(Long idOrder);
+
     enum Result {
         RELEASED,
         /** Pedido sem reserva ativa: nunca reservou, ja venceu ou ja foi paga. */

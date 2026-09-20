@@ -13,10 +13,6 @@ import lombok.Setter;
 import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 
-/**
- * Preenchida por evento OrderDelivered vindo do order.
- * Sem isso o inventory nao tem como provar que a compra existiu.
- */
 @Entity
 @Table(name = "review_eligibility")
 @Getter
@@ -32,4 +28,21 @@ public class ReviewEligibilityEntity {
     @Generated(event = EventType.INSERT)
     @Column(name = "granted_at", nullable = false)
     private Instant grantedAt;
+
+    @Generated(event = { EventType.INSERT, EventType.UPDATE })
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    // Propriedades de conveniencia para acessar a chave composta
+    public Long getIdUser() {
+        return id != null ? id.getIdUser() : null;
+    }
+
+    public Long getIdProduct() {
+        return id != null ? id.getIdProduct() : null;
+    }
+
+    public Long getIdOrder() {
+        return id != null ? id.getIdOrder() : null;
+    }
 }

@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.messaging.StockEventPublisherPort;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.messaging.events.StockReservedEvent;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.messaging.events.StockRejectedEvent;
+import ecommerce_event_driven.inventory.modules.product.infra.outbound.messaging.events.StockCommittedEvent;
+import ecommerce_event_driven.inventory.modules.product.infra.outbound.messaging.events.StockCommitFailedEvent;
 import ecommerce_event_driven.inventory.shared.outbox.OutboxMessage;
 import ecommerce_event_driven.inventory.shared.outbox.OutboxWriter;
 
@@ -57,6 +59,44 @@ public class StockEventOutboxPublisher implements StockEventPublisherPort {
                 String.valueOf(idOrder),
                 "ecommerce.stock.rejected.v1",
                 "stockRejected",
+                event);
+
+        outboxWriter.write(message);
+    }
+
+    @Override
+    public void publishStockCommitted(Long idOrder) {
+        StockCommittedEvent event = new StockCommittedEvent(
+                UUID.randomUUID().toString(),
+                Instant.now(),
+                idOrder);
+
+        OutboxMessage message = new OutboxMessage(
+                UUID.randomUUID(),
+                "stock",
+                String.valueOf(idOrder),
+                "ecommerce.stock.committed.v1",
+                "stockCommitted",
+                event);
+
+        outboxWriter.write(message);
+    }
+
+    @Override
+    public void publishStockCommitFailed(Long idOrder, Long idProduct, String reason) {
+        StockCommitFailedEvent event = new StockCommitFailedEvent(
+                UUID.randomUUID().toString(),
+                Instant.now(),
+                idOrder,
+                idProduct,
+                reason);
+
+        OutboxMessage message = new OutboxMessage(
+                UUID.randomUUID(),
+                "stock",
+                String.valueOf(idOrder),
+                "ecommerce.stock.commit.failed.v1",
+                "stockCommitFailed",
                 event);
 
         outboxWriter.write(message);

@@ -61,3 +61,16 @@ consumidor igual a `docs/event-contracts.md` §9.1; payload inválido → `Inval
 
 - [Recomprometer reserva vencida pode baixar estoque que outro pedido esperava] → a checagem de
   disponível conta as outras reservas ativas; se não couber, o pedido é cancelado e estornado.
+
+## Decisoes de implementacao
+
+- `CommitStockService` com transação própria para a baixa e uma transação separada para a falha:
+  o rollback da primeira não pode levar junto o `stock.commit.failed`.
+- Avaliações: `ReviewService` concentra as sete rotas; o snapshot do autor vem de
+  `GET /internal/users?ids=` e, se o `user` estiver fora, a avaliação é gravada sem nome (log
+  WARN) em vez de falhar — o texto da avaliação vale mais que o snapshot.
+- Avaliação de outro autor responde 404, não 403, para não confirmar a existência do id.
+- `rating` do produto é recalculado na mesma transação de criar, editar e remover avaliação.
+- Segurança: `/reviews/mine` e `/reviews/pending` declarados antes de `/reviews/{id}`, e
+  `POST /products/*/reviews` exige `reviews:write` (sem isso cairia na regra genérica de
+  "qualquer token autenticado").

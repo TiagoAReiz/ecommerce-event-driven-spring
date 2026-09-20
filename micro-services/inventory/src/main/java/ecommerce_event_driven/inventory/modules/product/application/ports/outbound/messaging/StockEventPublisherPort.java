@@ -6,4 +6,8 @@ public interface StockEventPublisherPort {
     void publishStockReserved(Long idOrder);
 
     void publishStockRejected(Long idOrder, Long idProduct);
+
+    void publishStockCommitted(Long idOrder);
+
+    void publishStockCommitFailed(Long idOrder, Long idProduct, String reason);
 }

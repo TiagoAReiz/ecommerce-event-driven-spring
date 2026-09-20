@@ -78,4 +78,23 @@ public class StockReservationRepositoryAdapter implements StockReservationReposi
 
         return held;
     }
+
+    @Override
+    public boolean confirmHeldByOrder(Long idOrder) {
+        int updated = jpaRepository.updateStatusByOrder(
+                idOrder, ReservationStatus.held, ReservationStatus.confirmed);
+        return updated > 0;
+    }
+
+    @Override
+    public boolean releaseConfirmedByOrder(Long idOrder) {
+        int updated = jpaRepository.updateConfirmedToReleasedByOrder(
+                idOrder, ReservationStatus.confirmed, ReservationStatus.released);
+        return updated > 0;
+    }
+
+    @Override
+    public java.util.List<Object[]> findHeldByOrder(Long idOrder) {
+        return jpaRepository.findByOrderAndStatus(idOrder, ReservationStatus.held);
+    }
 }
