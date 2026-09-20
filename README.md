@@ -241,81 +241,51 @@ docker compose exec broker /opt/kafka/bin/kafka-topics.sh --list --bootstrap-ser
 curl -s http://localhost:8083/connectors | jq .
 ```
 
-### 5. Testar uma Saga de Checkout
+### 5. Percorrer a Saga Completa
 
-#### 5.1 Criar um usuario
-```
-POST http://localhost:8080/users
-Content-Type: application/json
+O login e feito pelo Google: nao existe senha no sistema. Abra
+`http://localhost:8080/oauth2/authorization/google` no navegador; ao voltar, o token
+chega no fragmento da URL (`#token=...`). Todo o resto passa pelo gateway em `/api/v1`.
 
-{
-  "name": "Joao Silva",
-  "email": "joao@example.com",
-  "password": "senha123"
-}
-```
-
-#### 5.2 Login e obter token
-```
-POST http://localhost:8080/auth/login
-Content-Type: application/json
-
-{
-  "email": "joao@example.com",
-  "password": "senha123"
-}
-# Resposta: { "accessToken": "...", "expiresIn": 7200 }
-```
-
-#### 5.3 Consultar produtos
-```
-GET http://localhost:8080/products
-Authorization: Bearer <token>
-```
-
-#### 5.4 Criar carrinho e adicionar produtos
-```
-POST http://localhost:8080/carts/items
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "productId": 1,
-  "quantity": 2
-}
-```
-
-#### 5.5 Criar pedido (checkout)
-```
-POST http://localhost:8080/orders
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "addressId": 1,
-  "items": [
-    { "productId": 1, "quantity": 2 }
-  ]
-}
-# Resposta: { "orderId": 3301, "status": "pending", ... }
-```
-
-#### 5.6 Observar eventos no Kafka
 ```bash
-# Em outro terminal, ver eventos de estoque
-docker compose exec broker /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic ecommerce.stock.reserved.v1 \
-  --from-beginning \
-  --property print.key=true
+TOKEN="<token do fragmento>"
 
-# Ver eventos de pedido
-docker compose exec broker /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic ecommerce.order.created.v1 \
-  --from-beginning \
-  --property print.key=true
+# Catalogo (publico na borda)
+curl -s "http://localhost:8080/api/v1/categories?includeEmpty=true"
+curl -s http://localhost:8080/api/v1/products
+
+# Carrinho
+curl -s -X POST http://localhost:8080/api/v1/cart/items   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"   -d '{"idProduct":1,"quantity":1}'
+
+# Checkout: o valor e o frete sao calculados no servidor, nunca aceitos do cliente
+curl -s -X POST http://localhost:8080/api/v1/orders   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"   -H "Idempotency-Key: $(uuidgen)"   -d '{"addressId":1}'
+
+# Pagamento PIX (sem MP_ACCESS_TOKEN o servico responde em modo fake)
+curl -s -X POST http://localhost:8080/api/v1/payments   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"   -H "Idempotency-Key: $(uuidgen)"   -d '{"idOrder":1,"method":"pix",
+       "payer":{"email":"cliente@exemplo.dev",
+                "identification":{"type":"CPF","number":"12345678909"}}}'
+
+# A partir daqui a saga corre sozinha:
+# payment.approved -> pedido paid -> stock.committed -> order.confirmed -> envio criado
+curl -s http://localhost:8080/api/v1/orders/1 -H "Authorization: Bearer $TOKEN"
+
+# A loja despacha; o comprador confirma a entrega
+curl -s -X PATCH http://localhost:8080/api/v1/shipments/1   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"   -d '{"status":"in_transit","trackingCode":"BR123456789XY"}'
+curl -s -X POST http://localhost:8080/api/v1/shipments/1/confirm-delivery   -H "Authorization: Bearer $TOKEN"
+
+# Entrega confirmada da o direito de avaliar
+curl -s http://localhost:8080/api/v1/reviews/pending -H "Authorization: Bearer $TOKEN"
+curl -s -X POST http://localhost:8080/api/v1/products/1/reviews   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"   -d '{"idOrder":1,"rate":5,"title":"Muito bom","description":"Chegou rapido."}'
 ```
+
+#### 5.1 Observar os eventos no Kafka
+
+```bash
+docker compose exec broker /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server broker:9092   --topic ecommerce.order.created.v1   --from-beginning --property print.key=true --property print.headers=true
+```
+
+A key e o `orderId` e o header `__TypeId__` traz o alias do evento (`orderCreated`): os dois
+sao postos pelo Outbox Event Router do Debezium a partir das colunas da tabela `outbox`.
 
 ---
 
@@ -325,20 +295,67 @@ docker compose exec broker /opt/kafka/bin/kafka-console-consumer.sh \
 - Contratos de API (docs/api-contracts.md) - Especificacao de todas as rotas HTTP, corpos, parametros, codigos de resposta
 - ADR-001: Outbox Transacional com Debezium (docs/outbox-debezium.md) - Decisao de arquitetura, implementacao e operacao do pipeline de publicacao
 - Configuracao Kafka (docs/kafka.md) - Serializers, deserializers, consumidor, produtor, troubleshooting
-- OpenSpec Changes (openspec/) - Plano de implementacao desta infraestrutura (add-infra-local-stack)
+- Decisoes do Projeto (docs/decisions.md) - Decisoes de produto, arquitetura, processo e as correcoes encontradas na verificacao ponta a ponta
+- OpenSpec Changes (openspec/) - Uma proposta por servico/fase, com specs em delta, design e tarefas
 
 ---
 
-## Status de Implementacao
+## Integracao Continua
 
-- OK Base de microsservicos (Java, Spring Boot, Maven)
-- OK Persistencia (PostgreSQL, Flyway, JPA)
-- OK Configuracao Kafka e Debezium
-- OK Autenticacao e autorizacao (OAuth2, JWT)
-- OK Contratos de eventos e APIs
-- PARCIAL Sagas evento-driven
-  - OK order.created to stock.reserved/rejected
-  - PLANEJADO payment, shipment, reviews
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda um job por microsservico a cada
+push e pull request, com `fail-fast: false` — o servico que quebrou aparece sozinho.
+
+Cada job sobe um **Postgres de verdade**: os testes carregam o contexto Spring, que abre o pool
+e roda o Flyway, e o schema usa `ENUM` e `jsonb` do Postgres, entao banco em memoria nao serve.
+Kafka fica de fora de proposito — o listener nao bloqueia o boot, entra em retry e o contexto
+sobe igual, de modo que subir um broker seria custo sem cobertura. O gateway gera um par de
+chaves descartavel no job, porque as chaves de assinatura nao sao versionadas.
+
+---
+
+## Estado do Projeto
+
+Backend completo e verificado com a stack de pe, nao apenas compilando.
+
+| Area | Estado |
+|---|---|
+| Borda: OAuth2 Google, emissao de token, proxy, escopos por papel | Pronto |
+| `user`: perfil, enderecos, provisionamento do dono da loja, exclusao de conta (LGPD) | Pronto |
+| `inventory`: catalogo, estoque, reserva, baixa, devolucao, avaliacoes | Pronto |
+| `order`: carrinho, checkout idempotente, consultas, cancelamento, orquestracao da saga | Pronto |
+| `payment`: PIX, cartao tokenizado, Checkout Pro, webhook, estorno | Pronto (Mercado Pago em modo `fake` sem `MP_ACCESS_TOKEN`) |
+| `shipment`: cotacao de frete, envio, transicoes, confirmacao de entrega | Pronto |
+| Outbox transacional + Debezium nos cinco bancos | Pronto |
+| 80 rotas HTTP e 15 eventos Kafka documentados e implementados | Pronto |
+
+### O que foi percorrido ponta a ponta
+
+Com os dez containers de pe e os cinco conectores Debezium em `RUNNING`:
+
+- **Compra completa**: carrinho -> checkout (frete calculado por CEP real) -> `order.created` ->
+  reserva de estoque -> pagamento -> `payment.approved` -> pedido `paid` -> baixa de estoque ->
+  `order.confirmed` -> envio criado -> despacho -> pedido `shipped` com codigo de rastreio ->
+  confirmacao de entrega -> pedido `delivered` -> elegibilidade -> avaliacao com recalculo do
+  rating do produto.
+- **Compensacao**: cancelamento de pedido pago -> `order.refund.requested` -> estorno no
+  provedor -> `payment.refunded` -> pedido `refunded`, envio `cancelled`, estoque devolvido.
+- **Exclusao de conta (LGPD)**: `DELETE /users/me` -> `user.deleted` -> avaliacao anonimizada no
+  `inventory` ("Usuario removido", sem foto, texto e nota preservados) e carrinho com soft
+  delete no `order`. A conta da loja responde `409`: nao se apaga pela API.
+- **Subida do zero**: stack derrubada com volumes e reconstruida, migrations aplicadas,
+  conectores registrados e rotas publicas respondendo.
+
+As falhas encontradas nessa verificacao, e o que ficou decidido em cada uma, estao em
+[`docs/decisions.md`](docs/decisions.md).
+
+### Limites conhecidos
+
+- O Mercado Pago roda em modo `fake` enquanto nao houver `MP_ACCESS_TOKEN`; o contrato das rotas
+  e o mapeamento de status sao os mesmos nos dois modos.
+- Os testes automatizados cobrem a carga do contexto de cada servico. A verificacao funcional
+  descrita acima foi feita manualmente contra a stack.
+- `ETag`/`304` e moderacao de texto de avaliacao ficaram fora do escopo; nenhum fluxo depende
+  deles.
 
 ---
 
