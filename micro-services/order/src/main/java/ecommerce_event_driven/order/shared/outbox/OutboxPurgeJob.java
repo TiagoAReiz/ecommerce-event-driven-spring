@@ -1,7 +1,5 @@
 package ecommerce_event_driven.order.shared.outbox;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -26,11 +24,10 @@ public class OutboxPurgeJob {
     public void purgeOldEvents() {
         try {
             // Remove eventos com mais de 7 dias
-            Instant sevenDaysAgo = Instant.now().minus(7, ChronoUnit.DAYS);
 
-            String sql = "DELETE FROM outbox WHERE created_at < ?";
+            // Intervalo no proprio SQL: um Instant como parametro nao tem tipo SQL inferivel.
+            String sql = "DELETE FROM outbox WHERE created_at < now() - interval '7 days'";
             int deleted = jdbcClient.sql(sql)
-                    .param(sevenDaysAgo)
                     .update();
 
             if (deleted > 0) {

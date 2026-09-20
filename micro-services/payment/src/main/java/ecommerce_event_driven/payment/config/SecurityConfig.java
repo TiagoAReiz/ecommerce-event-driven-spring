@@ -1,6 +1,7 @@
 package ecommerce_event_driven.payment.config;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,19 +29,19 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         // Webhooks
-                        .requestMatchers("POST", "/webhooks/**").hasAuthority("SCOPE_webhooks:ingest")
+                        .requestMatchers(HttpMethod.POST, "/webhooks/**").hasAuthority("SCOPE_webhooks:ingest")
                         // Internal
-                        .requestMatchers("GET", "/internal/**").hasAuthority("SCOPE_internal:hydrate")
+                        .requestMatchers(HttpMethod.GET, "/internal/**").hasAuthority("SCOPE_internal:hydrate")
                         // Refund endpoint
-                        .requestMatchers("POST", "/payments/{id}/refund").hasAuthority("SCOPE_payments:refund")
+                        .requestMatchers(HttpMethod.POST, "/payments/{id}/refund").hasAuthority("SCOPE_payments:refund")
                         // Create and cancel endpoints
-                        .requestMatchers("POST", "/payments", "/payments/{id}/cancel")
+                        .requestMatchers(HttpMethod.POST, "/payments", "/payments/{id}/cancel")
                             .hasAuthority("SCOPE_payments:write")
                         // Sync endpoint (can be read or refund)
-                        .requestMatchers("POST", "/payments/{id}/sync")
+                        .requestMatchers(HttpMethod.POST, "/payments/{id}/sync")
                             .hasAnyAuthority("SCOPE_payments:read", "SCOPE_payments:refund")
                         // Read endpoints (including /config)
-                        .requestMatchers("GET", "/payments/**").hasAuthority("SCOPE_payments:read")
+                        .requestMatchers(HttpMethod.GET, "/payments/**").hasAuthority("SCOPE_payments:read")
                         // Default: authenticated
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))

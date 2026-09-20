@@ -1,12 +1,12 @@
 package ecommerce_event_driven.shipment.shared.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.time.Instant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Obtem token de servico no gateway. Cacheia ate 30s antes de expirar.
@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Component
 public class ServiceTokenProvider {
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
     private final String gatewayUrl;
     private final String clientId;
     private final String clientSecret;
@@ -24,7 +24,7 @@ public class ServiceTokenProvider {
 
     public ServiceTokenProvider(
             RestClient restClient,
-            ObjectMapper objectMapper,
+            JsonMapper objectMapper,
             @Value("${app.gateway.url}") String gatewayUrl,
             @Value("${app.service-client.id}") String clientId,
             @Value("${app.service-client.secret}") String clientSecret) {

@@ -1,7 +1,7 @@
 package ecommerce_event_driven.shipment.modules.shipment.infra.outbound.geocoding;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import ecommerce_event_driven.shipment.modules.shipment.application.ports.outbound.geocoding.GeocodingPort;
 import ecommerce_event_driven.shipment.modules.shipment.application.ports.outbound.geocoding.LocationDto;
 import ecommerce_event_driven.shipment.shared.web.NotFoundException;
@@ -18,9 +18,9 @@ import org.springframework.web.client.RestClient;
 public class GeocodingAdapter implements GeocodingPort {
     private final StringRedisTemplate redisTemplate;
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
-    public GeocodingAdapter(StringRedisTemplate redisTemplate, RestClient restClient, ObjectMapper objectMapper) {
+    public GeocodingAdapter(StringRedisTemplate redisTemplate, RestClient restClient, JsonMapper objectMapper) {
         this.redisTemplate = redisTemplate;
         this.restClient = restClient;
         this.objectMapper = objectMapper;

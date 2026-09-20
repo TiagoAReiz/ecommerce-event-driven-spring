@@ -1,6 +1,7 @@
 package ecommerce_event_driven.order.config;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,18 +31,18 @@ public class SecurityConfig {
                         // Rotas internas (servidor-a-servidor)
                         .requestMatchers("/internal/**").hasAuthority("SCOPE_internal:hydrate")
                         // Carrinho: leitura
-                        .requestMatchers("GET", "/cart").hasAuthority("SCOPE_cart:read")
+                        .requestMatchers(HttpMethod.GET, "/cart").hasAuthority("SCOPE_cart:read")
                         // Carrinho: escrita
-                        .requestMatchers("POST", "/cart/items").hasAuthority("SCOPE_cart:write")
-                        .requestMatchers("PUT", "/cart/items/**").hasAuthority("SCOPE_cart:write")
-                        .requestMatchers("DELETE", "/cart/**").hasAuthority("SCOPE_cart:write")
+                        .requestMatchers(HttpMethod.POST, "/cart/items").hasAuthority("SCOPE_cart:write")
+                        .requestMatchers(HttpMethod.PUT, "/cart/items/**").hasAuthority("SCOPE_cart:write")
+                        .requestMatchers(HttpMethod.DELETE, "/cart/**").hasAuthority("SCOPE_cart:write")
                         // Pedidos: rota de gestao ANTES de {id}
-                        .requestMatchers("GET", "/orders/manage").hasAuthority("SCOPE_sales:read")
+                        .requestMatchers(HttpMethod.GET, "/orders/manage").hasAuthority("SCOPE_sales:read")
                         // Pedidos: leitura
-                        .requestMatchers("GET", "/orders/**").hasAuthority("SCOPE_orders:read")
+                        .requestMatchers(HttpMethod.GET, "/orders/**").hasAuthority("SCOPE_orders:read")
                         // Pedidos: criacao e cancelamento
-                        .requestMatchers("POST", "/orders/**").hasAuthority("SCOPE_orders:write")
-                        .requestMatchers("PATCH", "/orders/**").hasAuthority("SCOPE_orders:write")
+                        .requestMatchers(HttpMethod.POST, "/orders/**").hasAuthority("SCOPE_orders:write")
+                        .requestMatchers(HttpMethod.PATCH, "/orders/**").hasAuthority("SCOPE_orders:write")
                         // Tudo mais requer autenticacao
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))

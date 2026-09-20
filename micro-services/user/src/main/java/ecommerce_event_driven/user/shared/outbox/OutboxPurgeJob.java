@@ -1,6 +1,5 @@
 package ecommerce_event_driven.user.shared.outbox;
 
-import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -22,9 +21,8 @@ public class OutboxPurgeJob {
 
     @Scheduled(cron = "0 0 2 * * *") // 2 AM todo dia
     public void purgeOldRecords() {
-        Instant sevenDaysAgo = Instant.now().minusSeconds(7 * 24 * 60 * 60);
-        int deleted = jdbc.sql("delete from outbox where created_at < :cutoff")
-                .param("cutoff", sevenDaysAgo)
+        // Intervalo no proprio SQL: um Instant como parametro nao tem tipo SQL inferivel.
+        int deleted = jdbc.sql("delete from outbox where created_at < now() - interval '7 days'")
                 .update();
         if (deleted > 0) {
             logger.info("Limpeza da outbox: {} registros removidos", deleted);

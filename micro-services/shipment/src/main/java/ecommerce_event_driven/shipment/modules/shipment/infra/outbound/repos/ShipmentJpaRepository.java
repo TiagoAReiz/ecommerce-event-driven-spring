@@ -20,29 +20,33 @@ public interface ShipmentJpaRepository extends JpaRepository<ShipmentEntity, Lon
 
     Optional<ShipmentEntity> findByTrackingCodeAndDeletedAtIsNull(String trackingCode);
 
-    Page<ShipmentEntity> findByIdUserAndDeletedAtIsNull(Long idUser, Pageable pageable);
-
     Optional<ShipmentEntity> findByIdAndDeletedAtIsNull(Long id);
 
-    @Query("SELECT s FROM ShipmentEntity s WHERE s.deletedAt IS NULL AND s.idUser = :idUser " +
-           "AND (:#{#statuses.isEmpty() ? 'true' : 'false'} OR s.status IN :statuses) " +
-           "AND (:orderId IS NULL OR s.idOrder = :orderId)")
-    Page<ShipmentEntity> findByIdUserWithFilters(
-            @Param("idUser") Long idUser,
-            @Param("statuses") List<ShipmentStatus> statuses,
-            @Param("orderId") Long orderId,
-            Pageable pageable);
+    // Filtros opcionais viram metodos derivados, e nao um JPQL com condicao ligada/desligada:
+    // uma lista vazia dentro de IN nao e SQL valido, e o adapter escolhe o metodo pelo filtro
+    // que recebeu.
 
-    @Query("SELECT s FROM ShipmentEntity s WHERE s.deletedAt IS NULL " +
-           "AND (:#{#statuses.isEmpty() ? 'true' : 'false'} OR s.status IN :statuses) " +
-           "AND (:orderId IS NULL OR s.idOrder = :orderId)")
-    Page<ShipmentEntity> findAllWithFilters(
-            @Param("statuses") List<ShipmentStatus> statuses,
-            @Param("orderId") Long orderId,
-            Pageable pageable);
+    Page<ShipmentEntity> findByIdUserAndDeletedAtIsNull(Long idUser, Pageable pageable);
 
-    @Query("SELECT s FROM ShipmentEntity s WHERE s.deletedAt IS NULL " +
-           "AND s.status IN :statuses AND s.updatedAt < :timestamp")
+    Page<ShipmentEntity> findByIdUserAndIdOrderAndDeletedAtIsNull(Long idUser, Long idOrder, Pageable pageable);
+
+    Page<ShipmentEntity> findByIdUserAndStatusInAndDeletedAtIsNull(
+            Long idUser, List<ShipmentStatus> statuses, Pageable pageable);
+
+    Page<ShipmentEntity> findByIdUserAndStatusInAndIdOrderAndDeletedAtIsNull(
+            Long idUser, List<ShipmentStatus> statuses, Long idOrder, Pageable pageable);
+
+    Page<ShipmentEntity> findByDeletedAtIsNull(Pageable pageable);
+
+    Page<ShipmentEntity> findByIdOrderAndDeletedAtIsNull(Long idOrder, Pageable pageable);
+
+    Page<ShipmentEntity> findByStatusInAndDeletedAtIsNull(List<ShipmentStatus> statuses, Pageable pageable);
+
+    Page<ShipmentEntity> findByStatusInAndIdOrderAndDeletedAtIsNull(
+            List<ShipmentStatus> statuses, Long idOrder, Pageable pageable);
+
+    @Query("SELECT s FROM ShipmentEntity s WHERE s.deletedAt IS NULL "
+            + "AND s.status IN :statuses AND s.updatedAt < :timestamp")
     List<ShipmentEntity> findExpiredInTransit(
             @Param("statuses") List<ShipmentStatus> statuses,
             @Param("timestamp") Instant timestamp);

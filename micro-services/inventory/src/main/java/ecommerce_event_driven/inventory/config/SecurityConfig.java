@@ -1,6 +1,7 @@
 package ecommerce_event_driven.inventory.config;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,17 +31,17 @@ public class SecurityConfig {
                         // Rotas internas
                         .requestMatchers("/internal/**").hasAuthority("SCOPE_internal:hydrate")
                         // Gestao de produtos - antes de /products/{id}
-                        .requestMatchers("GET", "/products/manage").hasAuthority("SCOPE_catalog:write")
-                        .requestMatchers("POST", "/products").hasAuthority("SCOPE_catalog:write")
-                        .requestMatchers("PUT", "/products/**").hasAuthority("SCOPE_catalog:write")
-                        .requestMatchers("PATCH", "/products/**").hasAuthority("SCOPE_catalog:write")
-                        .requestMatchers("DELETE", "/products/**").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers(HttpMethod.GET, "/products/manage").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers(HttpMethod.POST, "/products").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers(HttpMethod.PUT, "/products/**").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers(HttpMethod.PATCH, "/products/**").hasAuthority("SCOPE_catalog:write")
+                        .requestMatchers(HttpMethod.DELETE, "/products/**").hasAuthority("SCOPE_catalog:write")
                         // Categorias - leitura publica
-                        .requestMatchers("GET", "/categories").hasAuthority("SCOPE_catalog:read")
-                        .requestMatchers("GET", "/categories/**").hasAuthority("SCOPE_catalog:read")
+                        .requestMatchers(HttpMethod.GET, "/categories").hasAuthority("SCOPE_catalog:read")
+                        .requestMatchers(HttpMethod.GET, "/categories/**").hasAuthority("SCOPE_catalog:read")
                         // Produtos - leitura publica
-                        .requestMatchers("GET", "/products").hasAuthority("SCOPE_catalog:read")
-                        .requestMatchers("GET", "/products/**").hasAuthority("SCOPE_catalog:read")
+                        .requestMatchers(HttpMethod.GET, "/products").hasAuthority("SCOPE_catalog:read")
+                        .requestMatchers(HttpMethod.GET, "/products/**").hasAuthority("SCOPE_catalog:read")
                         // Tudo o resto requer autenticacao
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))

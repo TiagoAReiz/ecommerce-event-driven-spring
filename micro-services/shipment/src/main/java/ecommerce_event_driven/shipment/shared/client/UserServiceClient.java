@@ -1,8 +1,8 @@
 package ecommerce_event_driven.shipment.shared.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import ecommerce_event_driven.shipment.shared.web.NotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,13 +14,13 @@ import org.springframework.web.client.RestClient;
 @Component
 public class UserServiceClient {
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
     private final String userServiceUrl;
     private final ServiceTokenProvider tokenProvider;
 
     public UserServiceClient(
             RestClient restClient,
-            ObjectMapper objectMapper,
+            JsonMapper objectMapper,
             @Value("${app.services.user.url}") String userServiceUrl,
             ServiceTokenProvider tokenProvider) {
         this.restClient = restClient;

@@ -32,6 +32,6 @@ public interface ProductJpaRepository extends JpaRepository<ProductEntity, Long>
     @Query("select p from ProductEntity p where p.id = :idProduct and p.deletedAt is null")
     Optional<ProductEntity> findByIdForUpdate(@Param("idProduct") Long idProduct);
 
-    @Query("select count(p) from ProductEntity p where p.categoryId = :idCategory and p.deletedAt is null")
+    @Query("select count(p) from ProductEntity p where p.category.id = :idCategory and p.deletedAt is null")
     long countActiveByCategory(@Param("idCategory") Long idCategory);
 }

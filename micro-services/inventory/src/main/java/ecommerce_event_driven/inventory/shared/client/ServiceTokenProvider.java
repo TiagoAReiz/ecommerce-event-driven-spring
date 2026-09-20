@@ -25,12 +25,12 @@ public class ServiceTokenProvider {
     private Instant tokenExpiresAt;
 
     public ServiceTokenProvider(
-            RestClient.Builder builder,
             @Value("${app.gateway.url}") String gatewayUrl,
             @Value("${app.service-client.id}") String clientId,
             @Value("${app.service-client.secret}") String clientSecret) {
 
-        this.gatewayClient = builder.baseUrl(gatewayUrl).build();
+        // RestClient.Builder nao e um bean disponivel aqui; o cliente e montado direto.
+        this.gatewayClient = RestClient.builder().baseUrl(gatewayUrl).build();
         this.clientId = clientId;
         this.clientSecret = clientSecret;
     }

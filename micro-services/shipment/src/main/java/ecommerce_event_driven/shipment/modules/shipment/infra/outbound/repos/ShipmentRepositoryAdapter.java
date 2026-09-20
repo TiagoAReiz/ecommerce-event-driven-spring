@@ -4,6 +4,7 @@ import ecommerce_event_driven.shipment.modules.shipment.application.mappers.Ship
 import ecommerce_event_driven.shipment.modules.shipment.application.ports.outbound.repos.ShipmentRepositoryPort;
 import ecommerce_event_driven.shipment.modules.shipment.domain.models.Shipment;
 import ecommerce_event_driven.shipment.modules.shipment.domain.models.ShipmentStatus;
+import ecommerce_event_driven.shipment.modules.shipment.infra.outbound.repos.entity.ShipmentEntity;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -51,16 +52,34 @@ public class ShipmentRepositoryAdapter implements ShipmentRepositoryPort {
         List<ShipmentStatus> statuses = statusFilters == null || statusFilters.isEmpty()
             ? List.of()
             : statusFilters.stream().map(ShipmentStatus::valueOf).toList();
-        return jpaRepository.findByIdUserWithFilters(idUser, statuses, orderId, pageable)
-                .map(ShipmentMapper::toDomain);
+        Page<ShipmentEntity> page;
+        if (statuses.isEmpty() && orderId == null) {
+            page = jpaRepository.findByIdUserAndDeletedAtIsNull(idUser, pageable);
+        } else if (statuses.isEmpty()) {
+            page = jpaRepository.findByIdUserAndIdOrderAndDeletedAtIsNull(idUser, orderId, pageable);
+        } else if (orderId == null) {
+            page = jpaRepository.findByIdUserAndStatusInAndDeletedAtIsNull(idUser, statuses, pageable);
+        } else {
+            page = jpaRepository.findByIdUserAndStatusInAndIdOrderAndDeletedAtIsNull(idUser, statuses, orderId, pageable);
+        }
+        return page.map(ShipmentMapper::toDomain);
     }
 
     public Page<Shipment> findAllWithFilters(List<String> statusFilters, Long orderId, Pageable pageable) {
         List<ShipmentStatus> statuses = statusFilters == null || statusFilters.isEmpty()
             ? List.of()
             : statusFilters.stream().map(ShipmentStatus::valueOf).toList();
-        return jpaRepository.findAllWithFilters(statuses, orderId, pageable)
-                .map(ShipmentMapper::toDomain);
+        Page<ShipmentEntity> page;
+        if (statuses.isEmpty() && orderId == null) {
+            page = jpaRepository.findByDeletedAtIsNull(pageable);
+        } else if (statuses.isEmpty()) {
+            page = jpaRepository.findByIdOrderAndDeletedAtIsNull(orderId, pageable);
+        } else if (orderId == null) {
+            page = jpaRepository.findByStatusInAndDeletedAtIsNull(statuses, pageable);
+        } else {
+            page = jpaRepository.findByStatusInAndIdOrderAndDeletedAtIsNull(statuses, orderId, pageable);
+        }
+        return page.map(ShipmentMapper::toDomain);
     }
 
     public List<Shipment> findExpiredInTransit(Instant beforeTimestamp) {

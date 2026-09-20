@@ -1,7 +1,7 @@
 package ecommerce_event_driven.shipment.shared.outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -17,9 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class OutboxWriter {
     private final JdbcClient jdbc;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
-    public OutboxWriter(JdbcClient jdbc, ObjectMapper objectMapper) {
+    public OutboxWriter(JdbcClient jdbc, JsonMapper objectMapper) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
     }

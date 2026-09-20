@@ -2,6 +2,7 @@ package ecommerce_event_driven.inventory.shared.client;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -17,7 +18,7 @@ public class UserServiceClient {
     private final ServiceTokenProvider tokenProvider;
 
     public UserServiceClient(
-            RestClient userClient,
+            @Qualifier("userServiceRestClient") RestClient userClient,
             ServiceTokenProvider tokenProvider) {
 
         this.userClient = userClient;
