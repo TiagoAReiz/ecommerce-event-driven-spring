@@ -57,3 +57,42 @@ Records de entrada em `infra/inbound/messaging/events` exatamente com os campos 
 
 - [Dois eventos do mesmo pedido em tópicos diferentes chegando fora de ordem] → toda decisão
   pelo estado atual e `updateStatus` condicional; os caminhos convergem (`event-contracts` §10.6–10.7).
+
+## Decisoes de implementacao
+
+### D1. Estrutura de handlers transacionais separados do consumidor
+Cada evento recebido por um `@KafkaListener` delega para um handler `@Component` com `@Transactional` próprio.
+O Spring só intercepta `@Transactional` em chamadas entre beans, então a publicação de eventos na outbox
+ocorre dentro da transação correta. Os consumidores não são transacionais; apenas delegam.
+
+**Consumidores e handlers implementados:**
+- `StockEventsConsumer`: recebe 4 eventos → delega para `StockCommittedEventHandler` e `StockCommitFailedEventHandler`
+- `PaymentEventsConsumer`: recebe 3 eventos → delega para `PaymentApprovedEventHandler`, `PaymentFailedEventHandler`, `PaymentRefundedEventHandler`
+- `ShipmentEventsConsumer`: recebe 1 evento → delega para `ShipmentStatusChangedEventHandler`
+- `UserDeletedConsumer` (cart): recebe 1 evento → delega para `UserDeletedEventHandler`
+
+### D2. Monotonicidade em `ShipmentStatusChangedEventHandler`
+Shipment tem 7 status: `pending`, `ready_to_ship`, `in_transit`, `out_for_delivery`, `delivered`, `returned`, `cancelled`.
+Evento que causaria retrocesso (ex.: `delivered` → `in_transit`) é ignorado com log DEBUG, sem erro.
+Cancelamento é tratado como transição válida de qualquer estado.
+
+### D3. Soft delete em `UserDeletedEventHandler`
+Usa `JdbcTemplate` com UPDATE direto: primeiro marca cart_items como deletados, depois o cart.
+A operação é idempotente: se já foi deletado, `deleted_at` não muda (`AND deleted_at IS NULL`).
+
+### D4. Atualização condicional via `Order.toBuilder()`
+Projeções são atualizadas via `order.toBuilder().campo(valor).build()` e `orders.save()`.
+Mudanças de status usam `updateStatus(idOrder, from, to)` que retorna false se não estava em `from`.
+
+### D5. Records de evento como DTOs achatados
+Cada evento é um record achatado (não envelope aninhado) com `eventId` e `producedAt` no início.
+`UserDeletedEvent` é definida como record interno no `UserDeletedConsumer` para evitar duplicação de classes.
+
+### D6. `@KafkaListener` em 9 métodos
+Mapeadas para os 9 tópicos consumidos (sem incluir DLTs): `stock.reserved`, `stock.rejected`, `stock.committed`,
+`stock.commit.failed`, `payment.approved`, `payment.failed`, `payment.refunded`, `shipment.status.changed`, `user.deleted`.
+
+### Correções da revisão
+
+- Comparação de valor do pagamento com `compareTo` em vez de `equals`: `BigDecimal.equals` leva a
+  escala em conta, e `724.80` não seria igual a `724.8` — um pagamento correto iria para a DLT.
