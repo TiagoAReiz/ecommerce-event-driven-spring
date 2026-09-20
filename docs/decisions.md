@@ -45,6 +45,23 @@ cada funcionalidade estão detalhadas no `design.md` da change correspondente em
 | Geocodificação: BrasilAPI com fallback na Nominatim (OpenStreetMap) | Muitos CEPs não têm coordenada na BrasilAPI e travariam o checkout |
 | ETag/304 e moderação de texto de avaliação não implementados | Fora do escopo atual; nenhum fluxo depende deles |
 
+## Correções encontradas na verificação ponta a ponta
+
+A stack inteira foi levantada em Docker e a saga percorrida do carrinho à avaliação. O que
+quebrou no caminho, e o que ficou decidido:
+
+| Problema | Decisão |
+|---|---|
+| `POST /auth/service-token` anunciava `expiresIn: 300` com TTL real de 1 min | O `expiresIn` sai do token emitido. Cliente que cacheia pelo valor anunciado usava um token vencido e levava 401 nas chamadas internas |
+| Toda rota `PATCH` respondia 503 na borda | O proxy usa `JdkClientHttpRequestFactory`: o `HttpURLConnection` do `SimpleClientHttpRequestFactory` recusa `PATCH` |
+| `stock.committed` era gravado depois da transação de baixa | A escrita na outbox é `MANDATORY`: fora de transação ela estoura **depois** do estoque baixado, e a reentrega cai em "já commitado" sem publicar. O evento passou para dentro da transação |
+| `order.confirmed` sem `addressId`/`freightCost` e `order.delivered` sem `items` | O payload do evento é contrato: o consumidor não volta ao produtor por HTTP para completar o que faltou |
+| Projeções de envio e pagamento gravadas salvando o pedido inteiro | Cada projeção tem seu próprio `UPDATE`. Salvando o agregado, dois eventos concorrentes se sobrescrevem: o estorno voltava de `refunded` para `cancelled` |
+| Falha de consumo só aparecia quando o registro chegava ao DLT | `RetryListener` em todos os serviços, registrando tópico, partição, offset e causa a cada tentativa |
+| Corpo fora do contrato virava 500 | Campo obrigatório ausente responde 400, e a validação acontece antes de gravar o pagamento pendente para não queimar a `Idempotency-Key` |
+| `isOwner` fixo em `false` no cancelamento | O papel vem do token; `processing` → `cancelled` é transição da loja, como o contrato define |
+| Avaliação gravada sem nome do autor | O cliente do `user` não mandava o token de serviço e levava 401 silencioso |
+
 ## Processo
 
 | Decisão | Por quê |
