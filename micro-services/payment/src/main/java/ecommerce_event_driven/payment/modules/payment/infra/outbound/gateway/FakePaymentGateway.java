@@ -29,8 +29,11 @@ public class FakePaymentGateway implements PaymentGatewayPort {
         ObjectNode response = json.createObjectNode();
         String externalId = "fake-pix-" + UUID.randomUUID();
         response.put("id", externalId);
-        response.put("status", "pending");
-        response.put("status_detail", "pending_waiting_transfer");
+        // Modo fake aprova na hora: e o que torna a saga demonstravel sem conta no provedor.
+        response.put("status", "approved");
+        response.put("status_detail", "accredited");
+        response.put("date_approved", java.time.OffsetDateTime.now().toString());
+        response.put("date_of_expiration", java.time.OffsetDateTime.now().plusMinutes(30).toString());
         response.put("transaction_amount", amount.doubleValue());
 
         ObjectNode pointOfInteraction = response.putObject("point_of_interaction");
@@ -84,8 +87,11 @@ public class FakePaymentGateway implements PaymentGatewayPort {
     public JsonNode getPayment(String externalId) {
         ObjectNode response = json.createObjectNode();
         response.put("id", externalId);
-        response.put("status", "pending");
-        response.put("status_detail", "pending_waiting_transfer");
+        // Modo fake aprova na hora: e o que torna a saga demonstravel sem conta no provedor.
+        response.put("status", "approved");
+        response.put("status_detail", "accredited");
+        response.put("date_approved", java.time.OffsetDateTime.now().toString());
+        response.put("date_of_expiration", java.time.OffsetDateTime.now().plusMinutes(30).toString());
         response.put("date_approved", Instant.now().toString());
 
         return response;
