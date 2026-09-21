@@ -335,6 +335,7 @@ Backend completo e verificado com a stack de pe, nao apenas compilando.
 | `shipment`: cotacao de frete, envio, transicoes, confirmacao de entrega | Pronto |
 | Outbox transacional + Debezium nos cinco bancos | Pronto |
 | 80 rotas HTTP e 15 eventos Kafka documentados e implementados | Pronto |
+| Front: vitrine, conta, carrinho, pagamento, pedidos, avaliações e área da loja | Pronto |
 
 ### O que foi percorrido ponta a ponta
 

@@ -80,3 +80,25 @@ quebrou no caminho, e o que ficou decidido:
 | Kafka fica de fora do job | O listener não bloqueia o boot: sem broker ele entra em retry e o contexto sobe igual. Subir um broker só para isso seria custo sem cobertura |
 | O gateway gera um par de chaves descartável no job | As chaves de assinatura não são versionadas; o contexto não sobe sem elas |
 | `mvnw` versionado com bit de execução | Sem ele o runner Linux para em "Permission denied" |
+
+## Front
+
+| Decisão | Por quê |
+|---|---|
+| SPA em Vite + React + TypeScript, sem framework de servidor | A sessão é um Bearer guardado no navegador; não há nada para renderizar no servidor que justifique SSR, e um app estático é servido por nginx sem mais um processo para operar |
+| Porta 3000, fixa | O gateway só aceita uma origem no CORS e só devolve o login para ela (`app.front-url`). Outra porta quebra login e todas as chamadas |
+| Token no `sessionStorage`, nunca em cookie | O contrato é Bearer no header. `sessionStorage` morre com a aba; `localStorage` sobreviveria além da sessão sem motivo |
+| Token capturado do fragmento e apagado da barra de endereços na hora | Fragmento não vai ao servidor nem ao `Referer`; apagar evita que fique no histórico ou num print |
+| Um cliente HTTP só, com Bearer, `Idempotency-Key` e envelope RFC 9457 | Espalhar isso por tela garante que uma esqueça, e um `401` silencioso vira tela quebrada |
+| Estado de servidor no TanStack Query, sem store global | O que a tela mostra é cópia do servidor; cache, revalidação e invalidação já são o problema que a biblioteca resolve |
+| Cores só por tokens em `src/index.css` | Sem isso cada tela inventa o seu azul e a identidade se perde na terceira tela |
+| Uma pasta por área (`features/<área>`), cada uma dona das suas telas | Permitiu implementar as cinco áreas em paralelo sem que duas mexessem no mesmo arquivo |
+| Acompanhamento do PIX e do pedido relê o recurso, com parada | Ler `GET /payments/{id}` a cada 5 s é barato; `sync` tem limite de 1 por minuto no contrato. Para em estado final e não roda com a aba oculta |
+| Cartão tokenizado no navegador pelo SDK do Mercado Pago | O número do cartão nunca chega ao nosso backend — é o que mantém o PCI-DSS fora desta aplicação |
+
+### Defeitos que o front revelou no backend
+
+| Defeito | Correção |
+|---|---|
+| O CORS do gateway declarava origem e métodos, mas nenhum header | Sem `allowedHeaders`, o preflight de qualquer chamada com `Authorization` era recusado: **nenhuma** tela de navegador conseguiria falar com a API |
+| `PUT /cart/items/{idProduct}` exigia `idProduct` também no corpo | Reaproveitava o corpo do `POST` e respondia `400` para quem seguisse o contrato |
