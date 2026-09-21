@@ -97,3 +97,27 @@ jobs:
         with:
           name: surefire-${{ matrix.service }}
           path: micro-services/${{ matrix.service }}/target/surefire-reports/
+
+  front:
+    name: front
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: front
+        run: npm ci
+
+      # O build roda `tsc -b` antes do bundle: erro de tipo quebra o job aqui,
+      # que e onde custa barato.
+      - name: Build
+        working-directory: front
+        run: npm run build
