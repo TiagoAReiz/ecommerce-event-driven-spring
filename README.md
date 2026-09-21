@@ -100,6 +100,7 @@ graph TB
 | **Order** | 8083 | order_db | Orquestracao de sagas, gerenciamento de pedidos, carrinho |
 | **Payment** | 8084 | payment_db | Integracao Mercado Pago, processamento de pagamentos, estornos |
 | **Shipment** | 8085 | shipment_db | Gestao de envios, rastreamento, entrega |
+| **Front** | 3000 | — | Vitrine, conta, carrinho, pedidos e area da loja (React) |
 
 ---
 
@@ -181,6 +182,13 @@ Cache de leitura para rotas de catalogo e analise de frete. Falha de Redis nao d
 - Autenticacao: Spring Security 7, OAuth2, JWT (RS256)
 - Validacao: Jakarta Bean Validation
 - Stack de entrada: REST (RestClient), nao WebClient
+
+**Front** (`front/`)
+
+- React 19 + TypeScript, Vite
+- React Router, TanStack Query
+- Tailwind CSS 4, identidade branco e azul com tokens em `src/index.css`
+- Servido por nginx no compose; em dev, `npm run dev` na porta 3000
 
 ---
 

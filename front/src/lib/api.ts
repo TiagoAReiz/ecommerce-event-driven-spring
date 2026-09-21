@@ -33,7 +33,8 @@ export const UNAUTHORIZED_EVENT = 'loja:unauthorized'
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
-  query?: Record<string, string | number | boolean | undefined | null>
+  /** Array vira parametro repetido: o contrato tem filtros repetiveis (status, categoryId). */
+  query?: Record<string, string | number | boolean | undefined | null | (string | number)[]>
   /** UUID v4 reaproveitado no retry; so nas rotas que o contrato marca. */
   idempotencyKey?: string
   signal?: AbortSignal
@@ -45,6 +46,14 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   const url = new URL(API_URL + PREFIX + path)
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value === undefined || value === null || value === '') continue
+    if (Array.isArray(value)) {
+      // append, nao set: o contrato le varios valores da mesma chave como OR.
+      for (const item of value) {
+        if (item === undefined || item === null || item === '') continue
+        url.searchParams.append(key, String(item))
+      }
+      continue
+    }
     url.searchParams.set(key, String(value))
   }
   return url.toString()

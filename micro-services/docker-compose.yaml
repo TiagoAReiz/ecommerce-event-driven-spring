@@ -232,5 +232,18 @@ services:
       redis:
         condition: service_healthy
 
+  # A vitrine. Servida por nginx, que devolve o index em qualquer caminho para o
+  # roteamento do navegador funcionar depois de um F5.
+  front:
+    build:
+      context: ../front
+      args:
+        # Vai para dentro do bundle em tempo de build: e app estatico.
+        VITE_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - 3000:80
+    depends_on:
+      - api-gateway
+
 volumes:
   pgdata:
