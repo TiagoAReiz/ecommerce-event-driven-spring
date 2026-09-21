@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import ecommerce_event_driven.order.modules.cart.application.dtos.CartItemRequest;
+import ecommerce_event_driven.order.modules.cart.application.dtos.UpdateCartItemRequest;
 import ecommerce_event_driven.order.modules.cart.application.dtos.CartResponse;
 import ecommerce_event_driven.order.modules.cart.application.usecases.CartService;
 import ecommerce_event_driven.order.shared.security.CurrentUser;
@@ -55,7 +56,7 @@ public class CartController {
     @PutMapping("/items/{idProduct}")
     public ResponseEntity<CartResponse> updateItem(
             @PathVariable Long idProduct,
-            @Valid @RequestBody CartItemRequest request,
+            @Valid @RequestBody UpdateCartItemRequest request,
             JwtAuthenticationToken token) {
         Long userId = currentUser.getId(token.getToken());
         String accessToken = token.getToken().getTokenValue();
