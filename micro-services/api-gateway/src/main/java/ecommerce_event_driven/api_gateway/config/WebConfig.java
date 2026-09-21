@@ -25,6 +25,17 @@ public class WebConfig {
         configuration.setAllowedOrigins(Arrays.asList(frontUrl));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);
+        // Sem isto o preflight de qualquer chamada com Authorization, Content-Type ou
+        // Idempotency-Key e recusado: sem allowedHeaders o navegador nao passa nenhum.
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Idempotency-Key",
+                "X-Request-Id",
+                "If-None-Match"));
+        // Uma hora de cache do preflight: o navegador para de repetir OPTIONS a cada chamada.
+        configuration.setMaxAge(3600L);
         configuration.setExposedHeaders(Arrays.asList(
                 "Location",
                 "ETag",
