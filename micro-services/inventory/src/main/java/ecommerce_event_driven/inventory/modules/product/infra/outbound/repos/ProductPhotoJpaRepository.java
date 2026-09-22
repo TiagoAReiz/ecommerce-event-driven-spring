@@ -11,5 +11,8 @@ public interface ProductPhotoJpaRepository extends JpaRepository<ProductPhotoEnt
 
     List<ProductPhotoEntity> findByProductIdAndDeletedAtIsNullOrderByPositionAsc(Long idProduct);
 
+    /** Fotos de varios produtos de uma vez, para a vitrine nao consultar uma por item. */
+    List<ProductPhotoEntity> findByProductIdInAndDeletedAtIsNullOrderByProductIdAscPositionAsc(List<Long> idProducts);
+
     Optional<ProductPhotoEntity> findByIdAndDeletedAtIsNull(Long id);
 }

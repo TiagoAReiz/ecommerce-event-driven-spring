@@ -73,10 +73,17 @@ public class AvailabilityService {
             return Map.of();
         }
         Map<Long, Integer> held = reservations.sumHeldByProductIds(productIds);
+        // Disponivel = estoque - o que esta segurado por reserva ainda valida.
+        // Sem o estoque na conta, a vitrine inteira aparecia esgotada.
+        Map<Long, Integer> stocks = products.findAllById(productIds).stream()
+                .filter(product -> product.getDeletedAt() == null)
+                .collect(java.util.stream.Collectors.toMap(
+                        product -> product.getId(),
+                        product -> product.getStock() == null ? 0 : product.getStock()));
         return productIds.stream()
                 .collect(java.util.stream.Collectors.toMap(
                         id -> id,
-                        id -> Math.max(0, -held.getOrDefault(id, 0))));
+                        id -> Math.max(0, stocks.getOrDefault(id, 0) - held.getOrDefault(id, 0))));
     }
 
     /**

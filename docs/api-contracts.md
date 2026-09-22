@@ -318,7 +318,7 @@ um `FLUSHDB` de emergência não derrube os outros.
 | `idem:{rota}:{sub}:{key}` | order, payment | resposta serializada | 24 h | — |
 | `catalog:product:{id}` | inventory | detalhe do produto | 10 min | `PUT`/`PATCH`/`DELETE` do produto, `PATCH /stock` |
 | `catalog:search:{sha1(query)}` | inventory | página de resultados | 60 s | só TTL — é busca, aceita defasagem curta |
-| `catalog:categories` | inventory | lista completa | 1 h | só TTL — categorias só mudam por migration |
+| `catalog:categories` | inventory | lista completa | 1 h | TTL **e** invalidação ao criar, alterar ou remover produto: a lista carrega `productCount` e, sem `includeEmpty`, só mostra categoria que tem produto |
 | `catalog:hydrate:{id}` | inventory | `{id, name, price, photoUrl, available, active}` | 60 s | mesma do produto |
 | `geo:cep:{cep}` | shipment | `{lat, lon, city, state}` do CEP | 30 d | só TTL — CEP não muda de lugar |
 | `payment:methods:mp` | payment | meios de pagamento do MP | 6 h | só TTL |

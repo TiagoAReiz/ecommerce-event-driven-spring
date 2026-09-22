@@ -11,6 +11,7 @@ import ecommerce_event_driven.inventory.modules.product.domain.models.Product;
 import ecommerce_event_driven.inventory.modules.product.domain.models.Category;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.CategoryJpaRepository;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductJpaRepository;
+import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductPhotoJpaRepository;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.entity.ProductEntity;
 import ecommerce_event_driven.inventory.shared.web.PageMeta;
 import java.math.BigDecimal;
@@ -29,14 +30,17 @@ public class ProductSearchService {
     private final ProductJpaRepository productRepository;
     private final CategoryJpaRepository categoryRepository;
     private final AvailabilityService availabilityService;
+    private final ProductPhotoJpaRepository photoRepository;
 
     public ProductSearchService(
             ProductJpaRepository productRepository,
             CategoryJpaRepository categoryRepository,
-            AvailabilityService availabilityService) {
+            AvailabilityService availabilityService,
+            ProductPhotoJpaRepository photoRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.availabilityService = availabilityService;
+        this.photoRepository = photoRepository;
     }
 
     public ProductSearchResponse search(
@@ -58,13 +62,24 @@ public class ProductSearchService {
         var ids = page.getContent().stream().map(e -> e.getId()).toList();
         var availabilities = availabilityService.getAvailabilities(ids);
 
+        // Foto de capa de todos os itens numa consulta so: uma por produto seria
+        // N+1 na rota mais chamada do sistema.
+        Map<Long, String> capas = ids.isEmpty()
+                ? Map.of()
+                : photoRepository.findByProductIdInAndDeletedAtIsNullOrderByProductIdAscPositionAsc(ids).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                // Ler so o id do proxy LAZY nao dispara carga do produto.
+                                photo -> photo.getProduct().getId(),
+                                photo -> photo.getPhotoUrl(),
+                                (primeira, seguinte) -> primeira));
+
         List<ProductSearchItem> items = page.getContent().stream()
                 .map(entity -> {
                     Product product = ProductMapper.toDomain(entity);
                     var category = categoryRepository.findById(product.idCategory())
                             .map(CategoryMapper::toDomain);
                     int available = availabilities.getOrDefault(product.id(), 0);
-                    String photoUrl = null; // buscar foto principal
+                    String photoUrl = capas.get(product.id());
                     return new ProductSearchItem(
                             product.id(),
                             product.name(),
@@ -130,7 +145,9 @@ public class ProductSearchService {
             if (categoryIds == null || categoryIds.isEmpty()) {
                 return cb.conjunction();
             }
-            return root.get("categoryId").in(categoryIds);
+            // A entidade tem a associacao `category`, nao uma coluna `categoryId`:
+            // pelo nome errado o Hibernate nao resolve o atributo e a rota devolve 500.
+            return root.get("category").get("id").in(categoryIds);
         };
     }
 

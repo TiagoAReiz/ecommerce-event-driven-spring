@@ -23,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -107,6 +108,10 @@ public class ProductManagementController {
     }
 
     // Task 5.1: POST /products
+    // A lista de categorias carrega productCount e, sem includeEmpty, so mostra
+    // categoria que tem produto: escrever produto muda as duas coisas. Sem esta
+    // limpeza a vitrine fica ate uma hora com a navegacao errada.
+    @CacheEvict(value = "catalog:categories", allEntries = true)
     @PostMapping
     public ResponseEntity<ProductDetailResponse> createProduct(
             @Valid @RequestBody CreateProductRequest request) {
@@ -168,6 +173,10 @@ public class ProductManagementController {
     }
 
     // Task 5.1: PUT /products/{id}
+    // A lista de categorias carrega productCount e, sem includeEmpty, so mostra
+    // categoria que tem produto: escrever produto muda as duas coisas. Sem esta
+    // limpeza a vitrine fica ate uma hora com a navegacao errada.
+    @CacheEvict(value = "catalog:categories", allEntries = true)
     @PutMapping("/{id}")
     public ResponseEntity<ProductDetailResponse> updateProduct(
             @PathVariable Long id,
@@ -223,6 +232,10 @@ public class ProductManagementController {
     }
 
     // Task 5.1: DELETE /products/{id}
+    // A lista de categorias carrega productCount e, sem includeEmpty, so mostra
+    // categoria que tem produto: escrever produto muda as duas coisas. Sem esta
+    // limpeza a vitrine fica ate uma hora com a navegacao errada.
+    @CacheEvict(value = "catalog:categories", allEntries = true)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         var productEntity = productRepository.findById(id)
