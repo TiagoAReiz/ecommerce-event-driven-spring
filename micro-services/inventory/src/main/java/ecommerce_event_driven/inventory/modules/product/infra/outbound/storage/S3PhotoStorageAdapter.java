@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -20,6 +21,10 @@ public class S3PhotoStorageAdapter implements PhotoStoragePort {
 
     // 5 minutos: o mesmo prazo documentado no contrato da rota de upload-url.
     private static final Duration EXPIRES_IN = Duration.ofMinutes(5);
+
+    // Pasta de rascunho, usada antes do produto ter id. Mesmo prefixo que o
+    // docker-compose.yaml configura a expiracao de 1 dia (mc ilm rule).
+    private static final String DRAFT_PREFIX = "rascunho/";
 
     private final S3Client internalS3Client;
     private final S3Presigner publicS3Presigner;
@@ -42,7 +47,18 @@ public class S3PhotoStorageAdapter implements PhotoStoragePort {
         // Chave gerada pelo servidor: nome de arquivo do cliente pode colidir
         // ou carregar caminho (path traversal), entao nunca vira chave direto.
         String key = idProduct + "/" + UUID.randomUUID() + "." + extension;
+        return presignPut(key);
+    }
 
+    @Override
+    public UploadUrl createDraftUploadUrl(String extension) {
+        // rascunho/: o produto ainda nao tem id. O compose configura expiracao
+        // de 1 dia para o que nao for promovido em POST /products.
+        String key = DRAFT_PREFIX + UUID.randomUUID() + "." + extension;
+        return presignPut(key);
+    }
+
+    private UploadUrl presignPut(String key) {
         PutObjectRequest putRequest = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
@@ -61,6 +77,45 @@ public class S3PhotoStorageAdapter implements PhotoStoragePort {
         String publicUrl = publicUrlBase + "/" + bucket + "/" + key;
 
         return new UploadUrl(uploadUrl, publicUrl, EXPIRES_IN.toSeconds());
+    }
+
+    @Override
+    public String promoteDraft(String publicUrl, Long idProduct) {
+        String prefix = publicPrefix();
+        if (publicUrl == null || !publicUrl.startsWith(prefix)) {
+            // Link externo colado pelo dono - nao e nosso bucket, passa intacto.
+            return publicUrl;
+        }
+
+        String key = publicUrl.substring(prefix.length());
+        if (!key.startsWith(DRAFT_PREFIX)) {
+            // Ja esta na pasta de algum produto (ou outro formato) - nada a mover.
+            return publicUrl;
+        }
+
+        String fileName = key.substring(DRAFT_PREFIX.length());
+        String newKey = idProduct + "/" + fileName;
+
+        try {
+            internalS3Client.copyObject(CopyObjectRequest.builder()
+                    .sourceBucket(bucket)
+                    .sourceKey(key)
+                    .destinationBucket(bucket)
+                    .destinationKey(newKey)
+                    .build());
+            internalS3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build());
+            return publicUrlBase + "/" + bucket + "/" + newKey;
+        } catch (Exception ex) {
+            // O produto importa mais que a arrumacao da pasta: o rascunho continua
+            // acessivel (so expira em 1 dia), entao gravar a url de rascunho e
+            // seguro. Quem chama nao pode deixar de criar o produto por isso.
+            log.warn("Falha ao promover rascunho {} para o produto {}: {}", publicUrl, idProduct,
+                    ex.getMessage());
+            return publicUrl;
+        }
     }
 
     @Override

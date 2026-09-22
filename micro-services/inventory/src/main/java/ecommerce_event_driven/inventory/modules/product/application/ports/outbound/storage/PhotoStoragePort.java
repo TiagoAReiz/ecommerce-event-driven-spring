@@ -14,6 +14,23 @@ public interface PhotoStoragePort {
     UploadUrl createUploadUrl(Long idProduct, String extension);
 
     /**
+     * Gera uma url assinada de PUT para a tela de criacao de produto, antes de
+     * existir id. A chave fica sob rascunho/ - o compose configura expiracao
+     * de 1 dia para o que nao for promovido.
+     */
+    UploadUrl createDraftUploadUrl(String extension);
+
+    /**
+     * Promove um objeto de rascunho/ para a pasta do produto (copia + apaga o
+     * rascunho) e devolve a url final. Se a url nao for do nosso bucket ou nao
+     * estiver sob rascunho/, devolve a mesma url intacta (link externo colado
+     * pelo dono). Falha na movimentacao nao propaga: quem chama grava a url de
+     * rascunho mesmo assim (ver S3PhotoStorageAdapter - aqui a falha ja vem
+     * tratada e logada).
+     */
+    String promoteDraft(String publicUrl, Long idProduct);
+
+    /**
      * Apaga o objeto se a url apontar para o nosso bucket; senao, nao faz nada.
      * Falha ao apagar nao propaga: quem chama decide o que fazer (ver
      * S3PhotoStorageAdapter - aqui a falha ja vem tratada e logada).

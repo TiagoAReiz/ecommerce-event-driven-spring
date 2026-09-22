@@ -291,6 +291,10 @@ services:
         mc alias set loja http://minio:9000 "${S3_ACCESS_KEY:-minioadmin}" "${S3_SECRET_KEY:-minioadmin}"
         mc mb --ignore-existing loja/${S3_BUCKET:-produtos}
         mc anonymous set download loja/${S3_BUCKET:-produtos}
+        # Arquivo enviado antes do produto existir fica em rascunho/ e e promovido
+        # para a pasta do produto ao salvar. O que ficou para tras (formulario
+        # abandonado) expira sozinho, em vez de virar lixo permanente no bucket.
+        mc ilm rule add --expire-days 1 --prefix "rascunho/" loja/${S3_BUCKET:-produtos} 2>/dev/null || true
         echo "bucket pronto"
 
   # A vitrine: servidor Next em modo standalone. A parte publica sai renderizada

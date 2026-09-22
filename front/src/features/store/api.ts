@@ -65,10 +65,17 @@ export function addPhoto(id: number, body: AddPhotoRequest): Promise<ProductPhot
   return api.post(`/products/${id}/photos`, body, { idempotencyKey: newIdempotencyKey() })
 }
 
-/** Pede a URL assinada de envio (PUT) ao S3. So' existe para produto ja criado:
- * a rota vive sob `/products/{id}`, entao a criacao (sem id ainda) continua so' por URL. */
+/** Pede a URL assinada de envio (PUT) ao S3 para produto ja existente (tela de edicao).
+ * Para a tela de criacao, sem id ainda, usar `requestDraftPhotoUploadUrl`. */
 export function requestPhotoUploadUrl(id: number, body: PhotoUploadUrlRequest): Promise<PhotoUploadUrlResponse> {
   return api.post(`/products/${id}/photos/upload-url`, body)
+}
+
+/** Mesma ideia, mas sem id de produto (tela de criacao): o objeto cai numa area de
+ * rascunho e o backend promove para a pasta do produto quando a `publicUrl` daqui
+ * entra em `photos[]` do `POST /products`. */
+export function requestDraftPhotoUploadUrl(body: PhotoUploadUrlRequest): Promise<PhotoUploadUrlResponse> {
+  return api.post('/products/photos/upload-url', body)
 }
 
 export function reorderPhotos(id: number, body: PhotoOrderRequest): Promise<ProductPhoto[]> {

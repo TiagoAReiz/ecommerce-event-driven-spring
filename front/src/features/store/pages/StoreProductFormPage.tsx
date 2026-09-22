@@ -25,6 +25,7 @@ import {
   useManageProduct,
   usePatchProduct,
   useReorderPhotos,
+  useRequestDraftPhotoUploadUrl,
   useRequestPhotoUploadUrl,
   useUpdateStock,
 } from '../queries'
@@ -61,6 +62,7 @@ function CreateProductForm() {
   const router = useRouter()
   const categoriesQuery = useCategories()
   const createProduct = useCreateProduct()
+  const requestDraftPhotoUploadUrl = useRequestDraftPhotoUploadUrl()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -149,10 +151,15 @@ function CreateProductForm() {
 
         <Card className="p-4">
           <h2 className="mb-3 text-sm font-semibold text-ink">Fotos</h2>
-          <p className="mb-3 text-xs text-muted">
-            Envio direto de arquivo só fica disponível depois que o produto é criado — por enquanto, cole a URL.
-          </p>
-          <PhotoEditor photos={photos} onAdd={addPhotoLocal} onRemove={removePhotoLocal} onMove={movePhotoLocal} />
+          <PhotoEditor
+            photos={photos}
+            onAdd={addPhotoLocal}
+            onRemove={removePhotoLocal}
+            onMove={movePhotoLocal}
+            onRequestUploadUrl={(file) =>
+              requestDraftPhotoUploadUrl.mutateAsync({ fileName: file.name, contentType: file.type, sizeBytes: file.size })
+            }
+          />
         </Card>
 
         {createProduct.isError && (

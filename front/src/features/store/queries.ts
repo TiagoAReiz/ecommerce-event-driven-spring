@@ -21,6 +21,7 @@ import {
   patchShipment,
   refundPayment,
   reorderPhotos,
+  requestDraftPhotoUploadUrl,
   requestPhotoUploadUrl,
   syncPayment,
   updateStock,
@@ -95,6 +96,15 @@ export function useCreateProduct() {
   return useMutation({
     mutationFn: (body: CreateProductRequest) => createProduct(body),
     onSuccess: () => invalidateProducts(queryClient),
+  })
+}
+
+/** Igual a `useRequestPhotoUploadUrl`, mas para a tela de criacao (sem id de produto
+ * ainda). Sem `onSuccess`/invalidacao pelo mesmo motivo: so' habilita o PUT direto
+ * ao S3 que o `PhotoEditor` faz sozinho, nao muda nada em produto nenhum. */
+export function useRequestDraftPhotoUploadUrl() {
+  return useMutation({
+    mutationFn: (body: PhotoUploadUrlRequest) => requestDraftPhotoUploadUrl(body),
   })
 }
 

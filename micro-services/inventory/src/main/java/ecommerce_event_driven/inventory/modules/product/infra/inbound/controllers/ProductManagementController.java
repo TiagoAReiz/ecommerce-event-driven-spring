@@ -9,6 +9,7 @@ import ecommerce_event_driven.inventory.modules.product.application.dtos.UpdateP
 import ecommerce_event_driven.inventory.modules.product.application.dtos.UploadUrlRequest;
 import ecommerce_event_driven.inventory.modules.product.application.dtos.UploadUrlResponse;
 import ecommerce_event_driven.inventory.modules.product.application.mappers.ProductMapper;
+import ecommerce_event_driven.inventory.modules.product.application.ports.inbound.usecases.GenerateDraftUploadUrlUseCase;
 import ecommerce_event_driven.inventory.modules.product.application.ports.inbound.usecases.GenerateUploadUrlUseCase;
 import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.storage.PhotoStoragePort;
 import ecommerce_event_driven.inventory.modules.product.domain.models.Product;
@@ -50,6 +51,7 @@ public class ProductManagementController {
     private final CategoryJpaRepository categoryRepository;
     private final ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.StockReservationJpaRepository reservationRepository;
     private final GenerateUploadUrlUseCase generateUploadUrlUseCase;
+    private final GenerateDraftUploadUrlUseCase generateDraftUploadUrlUseCase;
     private final PhotoStoragePort photoStorage;
 
     public ProductManagementController(
@@ -58,12 +60,14 @@ public class ProductManagementController {
             CategoryJpaRepository categoryRepository,
             ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.StockReservationJpaRepository reservationRepository,
             GenerateUploadUrlUseCase generateUploadUrlUseCase,
+            GenerateDraftUploadUrlUseCase generateDraftUploadUrlUseCase,
             PhotoStoragePort photoStorage) {
         this.productRepository = productRepository;
         this.photoRepository = photoRepository;
         this.categoryRepository = categoryRepository;
         this.reservationRepository = reservationRepository;
         this.generateUploadUrlUseCase = generateUploadUrlUseCase;
+        this.generateDraftUploadUrlUseCase = generateDraftUploadUrlUseCase;
         this.photoStorage = photoStorage;
     }
 
@@ -148,9 +152,15 @@ public class ProductManagementController {
         if (request.photos() != null) {
             for (CreatePhotoRequest photoReq : request.photos()) {
                 validatePhotoUrl(photoReq.photoUrl());
+                // Foto enviada antes do produto existir fica em rascunho/; agora que o
+                // id nasceu, promove para a pasta do produto. Url que nao for do nosso
+                // bucket (link externo colado pelo dono) volta intacta. Falha na
+                // movimentacao nao derruba a criacao - a porta ja loga e devolve a
+                // propria url de rascunho, que continua acessivel.
+                String finalPhotoUrl = photoStorage.promoteDraft(photoReq.photoUrl(), saved.getId());
                 var photoEntity = ProductPhotoEntity.builder()
                     .product(saved)
-                    .photoUrl(photoReq.photoUrl())
+                    .photoUrl(finalPhotoUrl)
                     .position(photoReq.position().shortValue())
                     .build();
                 photoRepository.save(photoEntity);
@@ -351,6 +361,21 @@ public class ProductManagementController {
                 saved.getId(),
                 saved.getPhotoUrl(),
                 saved.getPosition()));
+    }
+
+    // POST /products/photos/upload-url
+    // Mesmo desenho da rota com id, para a tela de CRIACAO de produto: o id so
+    // nasce no INSERT, entao ainda nao da para usar /{id}/photos/upload-url.
+    // Segmento literal "photos" tem prioridade sobre a variavel {id} no
+    // roteamento do Spring (PathPattern compara por especificidade: menos
+    // variaveis ganha), entao esta rota nao e capturada por /{id}/... e
+    // POST /products/4/photos/upload-url continua batendo na outra.
+    // Chave fica em rascunho/{uuid}.{extensao}; POST /products promove para a
+    // pasta do produto quando o id passa a existir.
+    @PostMapping("/photos/upload-url")
+    public ResponseEntity<UploadUrlResponse> generateDraftUploadUrl(
+            @Valid @RequestBody UploadUrlRequest request) {
+        return ResponseEntity.ok(generateDraftUploadUrlUseCase.execute(request));
     }
 
     // Task 5.2: POST /products/{id}/photos/upload-url

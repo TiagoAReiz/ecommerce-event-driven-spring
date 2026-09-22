@@ -1415,6 +1415,14 @@ Diagnóstico da saga: em que estado está a reserva de um pedido.
 
 Todo produto é da loja: `id_owner` é preenchido com o `owner` único, nunca vem do corpo.
 
+Foto cuja `photoUrl` foi gerada por `POST /products/photos/upload-url` fica em `rascunho/`
+até este momento: aqui, cada `photoUrl` que aponta para o nosso bucket sob `rascunho/` é
+promovida (copiada + apagado o rascunho) para `{idProduct}/{uuid}.{extensão}`, e é a url final
+que é gravada. `photoUrl` que não for do nosso bucket (link externo colado pelo dono) é
+gravada como veio. Falha na promoção não derruba a criação do produto: grava a `photoUrl` de
+rascunho mesmo assim e registra em log — o objeto continua acessível até o lifecycle do bucket
+expirar o rascunho.
+
 **Resposta `201`** — mesmo corpo de `GET /products/{id}`, com `Location`.
 
 | Código | Quando |
@@ -1429,6 +1437,50 @@ Todo produto é da loja: `id_owner` é preenchido com o `owner` único, nunca ve
 | `422` | `price` com mais de 2 casas; `photoUrl` não é URL absoluta https |
 | `429` | mais de 100 produtos criados em 1 h |
 | `500` / `503` | banco |
+
+---
+
+#### `POST /products/photos/upload-url` — `IMPLEMENTADO`
+
+| | |
+|---|---|
+| **Auth** | `catalog:write` + papel `owner` |
+
+Mesmo desenho de `POST /products/{id}/photos/upload-url`, para a tela de **criação** de
+produto: o id só nasce no `INSERT`, então ainda não dá para usar a rota com `{id}`. Mesmas
+validações de tipo e tamanho; sem a verificação de produto, que aqui não se aplica. A chave do
+objeto vira `rascunho/{uuid}.{extensão}`, com a extensão derivada do `contentType` (nunca do
+`fileName` do cliente). O lifecycle do bucket (`docker-compose.yaml`) expira em 1 dia o que
+ficar em `rascunho/` sem ser promovido. `POST /products` promove cada foto de rascunho para a
+pasta do produto quando o produto é criado.
+
+Segmento literal `photos` tem prioridade sobre a variável `{id}` no roteamento do Spring, então
+esta rota não é capturada por `/{id}/...` e `POST /products/{id}/photos/upload-url` continua
+funcionando normalmente.
+
+**Request**
+
+```json
+{ "fileName": "frente.webp", "contentType": "image/webp", "sizeBytes": 123456 }
+```
+
+**Resposta `200`**
+
+```json
+{
+  "uploadUrl": "http://localhost:9000/produtos/rascunho/3f2a9c1e-....webp?X-Amz-Algorithm=...",
+  "publicUrl": "http://localhost:9000/produtos/rascunho/3f2a9c1e-....webp",
+  "expiresIn": 300
+}
+```
+
+| Código | Quando |
+|---|---|
+| `200` | url gerada |
+| `401` | token inválido |
+| `403` | sem `catalog:write` |
+| `422` | `contentType` fora de `image/jpeg`, `image/png`, `image/webp`, `image/avif` (`INVALID_CONTENT_TYPE`); `sizeBytes` acima de 5 MB (`FILE_TOO_LARGE`) |
+| `500` / `503` | storage |
 
 ---
 
