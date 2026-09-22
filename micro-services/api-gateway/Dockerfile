@@ -21,6 +21,10 @@ WORKDIR /app
 RUN useradd --system --create-home --uid 1001 spring
 
 COPY --from=build --chown=spring:spring /build/target/*.jar app.jar
+COPY --chown=spring:spring docker-entrypoint.sh ./
+# A pasta das chaves nasce aqui, com dono: /app e do root e o processo roda sem
+# privilegio, entao ele nao conseguiria criar o diretorio em tempo de execucao.
+RUN chmod +x docker-entrypoint.sh && mkdir -p keys && chown spring:spring keys
 USER spring
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -33,7 +33,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./micro-services/db/init:/docker-entrypoint-initdb.d:ro
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -80,19 +80,22 @@ services:
   connect-init:
     image: curlimages/curl:8.12.0
     volumes:
-      - ./debezium/connectors:/connectors:ro
-      - ./debezium/register.sh:/register.sh:ro
+      - ./micro-services/debezium/connectors:/connectors:ro
+      - ./micro-services/debezium/register.sh:/register.sh:ro
     entrypoint: ["sh", "/register.sh"]
     depends_on:
       connect:
         condition: service_healthy
 
   api-gateway:
-    build: ./api-gateway
+    build: ./micro-services/api-gateway
+    restart: unless-stopped
     ports:
       - 8080:8080
     env_file:
-      - ./api-gateway/.env
+      # Opcional: sem o arquivo, valem os defaults abaixo.
+      - path: ./micro-services/api-gateway/.env
+        required: false
     environment:
       # Heap limitado: seis JVMs, Kafka e Connect precisam caber numa maquina de desenvolvimento.
       JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
@@ -111,11 +114,20 @@ services:
       ORDER_CLIENT_SECRET: ${ORDER_CLIENT_SECRET:-dev-order-secret}
       PAYMENT_CLIENT_SECRET: ${PAYMENT_CLIENT_SECRET:-dev-payment-secret}
       SHIPMENT_CLIENT_SECRET: ${SHIPMENT_CLIENT_SECRET:-dev-shipment-secret}
-      STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL}
+      STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL:-dono@loja.local}
+      # Marcadores para a stack subir sem preparo nenhum. O login pelo Google so
+      # funciona com credenciais de verdade; ate la a autorizacao e recusada la
+      # mesmo, e o resto da loja roda normalmente.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-defina-no-google-cloud}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-defina-no-google-cloud}
       FRONT_URL: ${FRONT_URL:-http://localhost:3000}
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-dev-webhook-secret}
     volumes:
-      - ./api-gateway/keys:/app/keys:ro
+      # Volume nomeado, nao bind: num clone novo a pasta nao existe no host, e um
+      # bind somente leitura impediria o proprio container de gerar o par de
+      # chaves. O volume herda dono e permissao da imagem e sobrevive ao recreate.
+      # Para usar chaves de verdade, troque por um bind do seu diretorio.
+      - gateway-keys:/app/keys
     depends_on:
       db:
         condition: service_healthy
@@ -127,7 +139,8 @@ services:
         condition: service_started
 
   user:
-    build: ./user
+    build: ./micro-services/user
+    restart: unless-stopped
     environment:
       # Heap limitado: seis JVMs, Kafka e Connect precisam caber numa maquina de desenvolvimento.
       JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
@@ -137,7 +150,7 @@ services:
       JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
       GATEWAY_URL: http://api-gateway:8080
       SERVICE_CLIENT_SECRET: ${USER_CLIENT_SECRET:-dev-user-secret}
-      STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL}
+      STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL:-dono@loja.local}
     depends_on:
       db:
         condition: service_healthy
@@ -147,7 +160,8 @@ services:
         condition: service_healthy
 
   inventory:
-    build: ./inventory
+    build: ./micro-services/inventory
+    restart: unless-stopped
     environment:
       # Heap limitado: seis JVMs, Kafka e Connect precisam caber numa maquina de desenvolvimento.
       JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
@@ -167,7 +181,8 @@ services:
         condition: service_healthy
 
   order:
-    build: ./order
+    build: ./micro-services/order
+    restart: unless-stopped
     environment:
       # Heap limitado: seis JVMs, Kafka e Connect precisam caber numa maquina de desenvolvimento.
       JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
@@ -189,7 +204,8 @@ services:
         condition: service_healthy
 
   payment:
-    build: ./payment
+    build: ./micro-services/payment
+    restart: unless-stopped
     environment:
       # Heap limitado: seis JVMs, Kafka e Connect precisam caber numa maquina de desenvolvimento.
       JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
@@ -200,9 +216,9 @@ services:
       GATEWAY_URL: http://api-gateway:8080
       ORDER_SERVICE_URL: http://order:8083
       SERVICE_CLIENT_SECRET: ${PAYMENT_CLIENT_SECRET:-dev-payment-secret}
-      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN}
-      MP_PUBLIC_KEY: ${MP_PUBLIC_KEY}
-      MP_NOTIFICATION_URL: ${MP_NOTIFICATION_URL}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_PUBLIC_KEY: ${MP_PUBLIC_KEY:-}
+      MP_NOTIFICATION_URL: ${MP_NOTIFICATION_URL:-}
     depends_on:
       db:
         condition: service_healthy
@@ -212,7 +228,8 @@ services:
         condition: service_healthy
 
   shipment:
-    build: ./shipment
+    build: ./micro-services/shipment
+    restart: unless-stopped
     environment:
       # Heap limitado: seis JVMs, Kafka e Connect precisam caber numa maquina de desenvolvimento.
       JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
@@ -232,18 +249,24 @@ services:
       redis:
         condition: service_healthy
 
-  # A vitrine. Servida por nginx, que devolve o index em qualquer caminho para o
-  # roteamento do navegador funcionar depois de um F5.
+  # A vitrine: servidor Next em modo standalone. A parte publica sai renderizada
+  # do servidor; o que depende de sessao roda no navegador.
   front:
+    restart: unless-stopped
     build:
-      context: ../front
+      context: ./front
       args:
-        # Vai para dentro do bundle em tempo de build: e app estatico.
-        VITE_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
+        # Inlinado no bundle: e o endereco que o NAVEGADOR usa.
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
     ports:
-      - 3000:80
+      - 3000:3000
+    environment:
+      # Lido em execucao: e o endereco que o servidor do Next usa, dentro da rede.
+      INTERNAL_API_URL: http://api-gateway:8080
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
     depends_on:
       - api-gateway
 
 volumes:
   pgdata:
+  gateway-keys:
