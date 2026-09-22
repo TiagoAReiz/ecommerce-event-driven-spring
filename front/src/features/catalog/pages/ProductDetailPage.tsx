@@ -109,9 +109,14 @@ export default function ProductDetailPage({
 
         <div className="flex flex-col gap-4">
           <div>
-            <Link href={`/products?categoryId=${data.category.id}`} className="text-sm text-brand-700 hover:underline">
-              {data.category.name}
-            </Link>
+            {data.category && (
+              <Link
+                href={`/products?categoryId=${data.category.id}`}
+                className="text-sm text-brand-700 hover:underline"
+              >
+                {data.category.name}
+              </Link>
+            )}
             <h1 className="mt-1 text-2xl font-semibold text-ink">{data.name}</h1>
             <RatingStars rating={data.rating} count={data.ratingCount} className="mt-2" />
           </div>

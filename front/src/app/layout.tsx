@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Suspense, type ReactNode } from 'react'
 import { AppShell } from '@/components/AppShell'
+import { SessionWatcher } from '@/components/SessionWatcher'
 import { Spinner } from '@/components/ui'
 import { Providers } from './providers'
 import './globals.css'
@@ -20,6 +21,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="pt-BR" className={inter.variable}>
       <body>
         <Providers>
+          {/* Le a query string para guardar o destino, entao vai dentro do Suspense. */}
+          <Suspense fallback={null}>
+            <SessionWatcher />
+          </Suspense>
           <AppShell>
             {/* As telas com sessao leem a query string e so existem no navegador.
                 A fronteira fica aqui para que cada uma nao precise repeti-la, e

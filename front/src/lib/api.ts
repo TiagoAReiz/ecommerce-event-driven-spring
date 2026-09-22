@@ -98,8 +98,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError({ status: 0, code: 'NETWORK_ERROR', title: 'Sem conexão com o servidor' })
   }
 
-  // So no navegador: no servidor nao ha sessao para derrubar nem janela para avisar.
-  if (response.status === 401 && !anonymous && typeof window !== 'undefined') {
+  // Sessao que nao existe ou nao vale leva ao login, nunca a uma tela de erro.
+  // O 403 entra na mesma regra quando nao ha token: sem sessao, a recusa e falta
+  // de login, nao falta de permissao. Com token, o 403 e do dono da tela tratar.
+  const semSessao = response.status === 401 || (response.status === 403 && !getToken())
+  if (semSessao && !anonymous && typeof window !== 'undefined') {
     clearToken()
     window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT))
   }
