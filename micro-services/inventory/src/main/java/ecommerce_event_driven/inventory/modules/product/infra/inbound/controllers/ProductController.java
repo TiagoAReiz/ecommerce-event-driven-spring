@@ -11,6 +11,10 @@ import ecommerce_event_driven.inventory.modules.product.application.usecases.Pro
 import ecommerce_event_driven.inventory.modules.product.domain.models.Product;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductJpaRepository;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductPhotoJpaRepository;
+import ecommerce_event_driven.inventory.modules.product.application.dtos.CategoryResponse;
+import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.CategoryJpaRepository;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import ecommerce_event_driven.inventory.shared.web.NotFoundException;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -35,16 +39,19 @@ public class ProductController {
     private final AvailabilityService availabilityService;
     private final ProductJpaRepository productRepository;
     private final ProductPhotoJpaRepository photoRepository;
+    private final CategoryJpaRepository categoryRepository;
 
     public ProductController(
             ProductSearchService searchService,
             AvailabilityService availabilityService,
             ProductJpaRepository productRepository,
-            ProductPhotoJpaRepository photoRepository) {
+            ProductPhotoJpaRepository photoRepository,
+            CategoryJpaRepository categoryRepository) {
         this.searchService = searchService;
         this.availabilityService = availabilityService;
         this.productRepository = productRepository;
         this.photoRepository = photoRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @GetMapping
@@ -78,9 +85,16 @@ public class ProductController {
                 .body(response);
     }
 
+    /** O papel vem do token emitido pelo gateway. */
+    private static boolean ehDono(Jwt jwt) {
+        var roles = jwt == null ? null : jwt.getClaimAsStringList("roles");
+        return roles != null && roles.contains("owner");
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_catalog:read')")
-    public ResponseEntity<ProductDetailResponse> getProductDetail(@PathVariable Long id) {
+    public ResponseEntity<ProductDetailResponse> getProductDetail(
+            @PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         var productEntity = productRepository
                 .findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new NotFoundException("Produto nao encontrado"));
@@ -100,11 +114,15 @@ public class ProductController {
                 product.name(),
                 product.description(),
                 product.price().toPlainString(),
-                product.stock(),
+                // Estoque bruto e informacao da loja: para o publico sai so o disponivel.
+                ehDono(jwt) ? product.stock() : null,
                 available,
                 product.rating() != null ? product.rating().toPlainString() : "0",
                 product.ratingCount() != null ? product.ratingCount() : 0,
-                null, // category - implementar depois
+                categoryRepository.findById(product.idCategory())
+                        .map(CategoryMapper::toDomain)
+                        .map(c -> new CategoryResponse(c.id(), c.name(), c.slug(), 0L))
+                        .orElse(null),
                 photos,
                 product.createdAt(),
                 product.updatedAt());
