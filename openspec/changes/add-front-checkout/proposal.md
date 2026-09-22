@@ -1,5 +1,11 @@
 # Proposal
 
+> **Nota de implementação.** A stack do front mudou depois desta proposta: saiu Vite + React
+> Router e entrou Next.js com App Router, com a vitrine pública renderizada no servidor. As
+> telas, as rotas de API e o desenho descritos aqui continuam valendo; o motivo da troca está
+> em `docs/decisions.md`.
+
+
 ## Why
 
 O front-end não possui interface de compra. Hoje não há carrinho visual, checkout com validação de endereço, cálculo de frete ou pagamento pelo Mercado Pago. O usuário não consegue comprar e a loja não tem receita.

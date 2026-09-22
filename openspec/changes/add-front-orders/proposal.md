@@ -1,5 +1,11 @@
 # Proposal
 
+> **Nota de implementação.** A stack do front mudou depois desta proposta: saiu Vite + React
+> Router e entrou Next.js com App Router, com a vitrine pública renderizada no servidor. As
+> telas, as rotas de API e o desenho descritos aqui continuam valendo; o motivo da troca está
+> em `docs/decisions.md`.
+
+
 ## Why
 
 O cliente compra, paga, recebe — mas hoje não consegue acompanhar nada pelo front. Sem telas de

@@ -1,5 +1,11 @@
 # Proposal
 
+> **Nota de implementação.** A stack do front mudou depois desta proposta: saiu Vite + React
+> Router e entrou Next.js com App Router, com a vitrine pública renderizada no servidor. As
+> telas, as rotas de API e o desenho descritos aqui continuam valendo; o motivo da troca está
+> em `docs/decisions.md`.
+
+
 ## Why
 
 O frontend precisa de interface completa para autenticação pelo Google, gerenciamento de sessão (renovação deslizante antes de expirar, logout) e acesso à conta pessoal do usuário. Sem essas telas, o usuário não consegue fazer login, manter a sessão viva nem acessar/editar o perfil e endereços para o checkout.

@@ -1,5 +1,11 @@
 # Proposta
 
+> **Nota de implementação.** A stack do front mudou depois desta proposta: saiu Vite + React
+> Router e entrou Next.js com App Router, com a vitrine pública renderizada no servidor. As
+> telas, as rotas de API e o desenho descritos aqui continuam valendo; o motivo da troca está
+> em `docs/decisions.md`.
+
+
 ## Por que
 
 A loja não tem interface pública de catálogo. Cliente não consegue navegar produtos, buscar por nome, filtrar por categoria, comparar preços nem ver avaliações. Sem vitrine, não há comércio.
