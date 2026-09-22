@@ -1,4 +1,5 @@
-import ProductListPage, { readParams } from '@/features/catalog/pages/ProductListPage'
+import ProductListPage from '@/features/catalog/pages/ProductListPage'
+import { readParams } from '@/features/catalog/listParams'
 import { fetchProducts } from '@/features/catalog/api'
 
 // Filtro/pagina vem da querystring: e Promise no Next 16, entao precisa await antes
@@ -22,11 +23,12 @@ function toURLSearchParams(searchParams: Record<string, string | string[] | unde
 
 export default async function Page({ searchParams }: { searchParams: SearchParams }) {
   const resolved = await searchParams
-  const params = readParams(toURLSearchParams(resolved))
+  const query = toURLSearchParams(resolved)
+  const params = readParams(query)
 
   // Gateway fora nao pode derrubar a listagem: sem os dados, a propria tela mostra o
   // estado de erro e tenta de novo no cliente.
   const initialData = await fetchProducts(params).catch(() => undefined)
 
-  return <ProductListPage initialData={initialData} />
+  return <ProductListPage initialData={initialData} query={query.toString()} />
 }

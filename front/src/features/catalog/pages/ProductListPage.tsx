@@ -1,52 +1,30 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import type { ReadonlyURLSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Button, EmptyState, ErrorState, Field, Input, Pagination, PageHeader, Select, Skeleton } from '@/components/ui'
 import { money } from '@/lib/format'
 import { fetchCategories, fetchProducts } from '../api'
-import type { ProductListParams } from '../api'
+import { PAGE_SIZE, readParams } from '../listParams'
 import { errorDescription, errorTitle } from '../errors'
 import { ProductCard } from '../components/ProductCard'
 import type { ProductsResponse } from '../types'
 
-const PAGE_SIZE = 20
 
-/** Le os filtros direto da URL: ela e a fonte da verdade, assim o link e compartilhavel
- * e o back/forward do navegador funciona sem estado escondido em componente.
- * Exportada porque a rota servidor usa a mesma leitura para buscar o initialData. */
-export function readParams(searchParams: URLSearchParams | ReadonlyURLSearchParams): ProductListParams {
-  const categoryId = searchParams.get('categoryId')
-  const minPrice = searchParams.get('minPrice')
-  const maxPrice = searchParams.get('maxPrice')
-  const minRating = searchParams.get('minRating')
-  const page = searchParams.get('page')
-  const sort = searchParams.get('sort')
-  const q = searchParams.get('q')
-
-  return {
-    q: q || undefined,
-    categoryId: categoryId ? Number(categoryId) : undefined,
-    minPrice: minPrice || undefined,
-    maxPrice: maxPrice || undefined,
-    minRating: minRating || undefined,
-    inStock: searchParams.get('inStock') === 'true' ? true : undefined,
-    page: page ? Number(page) : 0,
-    size: PAGE_SIZE,
-    sort: sort || 'createdAt,desc',
-  }
-}
-
-export default function ProductListPage({ initialData }: { initialData?: ProductsResponse }) {
+export default function ProductListPage({
+  initialData,
+  query,
+}: {
+  initialData?: ProductsResponse
+  /** Querystring ja resolvida pela rota servidor. Ler com useSearchParams aqui
+   * faria o Next renderizar esta tela so no navegador, e a listagem sairia fora
+   * do HTML -- justamente o que a vitrine nao pode perder. */
+  query: string
+}) {
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const searchParams = useMemo(() => new URLSearchParams(query), [query])
   const params = useMemo(() => readParams(searchParams), [searchParams])
-
-  // initialData so vale para a mesma combinacao de filtros que o servidor buscou:
-  // guarda a URL de entrada e compara, senao um filtro novo mostraria dado errado.
-  const [initialSearchParams] = useState(() => searchParams.toString())
 
   // Campo de busca vive em estado local e so escreve na URL depois do debounce:
   // uma requisicao por pausa de digitacao, nao uma por tecla.
@@ -70,7 +48,7 @@ export default function ProductListPage({ initialData }: { initialData?: Product
   const products = useQuery({
     queryKey: ['catalog', 'products', searchParams.toString()],
     queryFn: () => fetchProducts(params),
-    initialData: searchParams.toString() === initialSearchParams ? initialData : undefined,
+    initialData,
   })
 
   function updateParams(patch: Record<string, string | number | boolean | null>) {

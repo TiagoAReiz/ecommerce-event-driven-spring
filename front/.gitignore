@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .env
 .env.local
+
+# artefato de build do TypeScript
+*.tsbuildinfo
