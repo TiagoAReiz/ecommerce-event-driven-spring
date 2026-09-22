@@ -1,7 +1,9 @@
+'use client'
+
 import { useState } from 'react'
-import { Button, Field, Input, Textarea } from '../../../components/ui'
-import { ApiError } from '../../../lib/api'
-import { money } from '../../../lib/format'
+import { Button, Field, Input, Textarea } from '@/components/ui'
+import { ApiError } from '@/lib/api'
+import { money } from '@/lib/format'
 import { Modal } from './Modal'
 import { useRefundPayment } from '../queries'
 import type { PaymentAttempt } from '../types'

@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { Button, Card, EmptyState, ErrorState, LinkButton, PageHeader, Skeleton } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'
 import { money } from '../../../lib/format'
@@ -11,7 +13,7 @@ import { BLOCKING_CART_ISSUES } from '../types'
 
 /** `/cart`: `GET /cart`, com `PUT`/`DELETE /cart/items/{id}` para ajustar. */
 export default function CartPage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const cartQuery = useCart()
   const setQuantity = useSetCartItemQuantity()
   const removeItem = useRemoveCartItem()
@@ -109,7 +111,7 @@ export default function CartPage() {
           </p>
         )}
 
-        <Button disabled={hasBlockingIssue} onClick={() => navigate('/checkout')}>
+        <Button disabled={hasBlockingIssue} onClick={() => router.push('/checkout')}>
           Ir para o checkout
         </Button>
       </Card>

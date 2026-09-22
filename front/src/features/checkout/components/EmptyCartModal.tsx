@@ -1,3 +1,5 @@
+'use client'
+
 import { Button } from '../../../components/ui'
 import { Modal } from '../../orders/components/Modal'
 import { useEmptyCart } from '../queries'

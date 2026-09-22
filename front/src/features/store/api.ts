@@ -1,8 +1,8 @@
 /** Chamadas HTTP da area da loja (papel owner). Todas exigem Bearer com `owner` —
  * a rota ja chega protegida por `RequireAuth ownerOnly` no router, entao nenhuma
  * chamada aqui usa `anonymous: true`. */
-import { api, newIdempotencyKey } from '../../lib/api'
-import type { ProductPhoto } from '../catalog/types'
+import { api, newIdempotencyKey } from '@/lib/api'
+import type { ProductPhoto } from '@/features/catalog/types'
 import type {
   AddPhotoRequest,
   CancelOrderRequest,
@@ -23,7 +23,7 @@ import type {
   StockUpdateResponse,
   SyncPaymentResponse,
 } from './types'
-import type { OrderDetail, OrderStatus, ShipmentDetail, ShipmentStatus } from '../orders/types'
+import type { OrderDetail, OrderStatus, ShipmentDetail, ShipmentStatus } from '@/features/orders/types'
 
 /* ---------- produtos (contrato §7, faixas 1030-1700) ---------- */
 

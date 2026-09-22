@@ -1,5 +1,7 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { Card, LinkButton, Spinner } from '../../../components/ui'
 import { consumeTokenFromFragment, useAuth } from '../../../lib/auth'
 
@@ -9,7 +11,7 @@ import { consumeTokenFromFragment, useAuth } from '../../../lib/auth'
  */
 export default function CallbackPage() {
   const { reload } = useAuth()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [failed, setFailed] = useState(false)
   // StrictMode roda o effect duas vezes em dev; o fragmento so existe na primeira.
   const consumed = useRef(false)
@@ -24,8 +26,8 @@ export default function CallbackPage() {
       return
     }
 
-    void reload().then(() => navigate(redirectTo, { replace: true }))
-  }, [reload, navigate])
+    void reload().then(() => router.replace(redirectTo))
+  }, [reload, router])
 
   if (failed) {
     return (

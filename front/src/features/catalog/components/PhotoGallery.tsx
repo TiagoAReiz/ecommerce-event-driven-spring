@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { cx } from '../../../lib/format'
+import { cx } from '@/lib/format'
 import type { ProductPhoto } from '../types'
 
 /** Foto principal + miniaturas. Sem foto nenhuma, cai no fallback: nunca fica com

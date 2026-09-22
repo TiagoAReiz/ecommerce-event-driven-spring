@@ -1,6 +1,8 @@
-import { Link } from 'react-router-dom'
-import { Card, EmptyState, ErrorState, LinkButton, PageHeader, Skeleton } from '../../../components/ui'
-import { date, money } from '../../../lib/format'
+'use client'
+
+import Link from 'next/link'
+import { Card, EmptyState, ErrorState, LinkButton, PageHeader, Skeleton } from '@/components/ui'
+import { date, money } from '@/lib/format'
 import { errorDescription, errorTitle } from '../errors'
 import { useManageOrders, useManageShipments } from '../queries'
 import { OrderStatusBadge, ShipmentStatusBadge } from '../components/StatusBadges'
@@ -63,7 +65,7 @@ export default function StoreHomePage() {
               {queueItems.map((shipment) => (
                 <li key={shipment.id}>
                   <Link
-                    to="/store/shipments"
+                    href="/store/shipments"
                     className="flex items-center justify-between gap-3 rounded-[8px] border border-line p-3 text-sm hover:border-brand-300"
                   >
                     <div>
@@ -83,7 +85,7 @@ export default function StoreHomePage() {
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink">Pedidos recentes</h2>
-            <Link to="/store/orders" className="text-xs font-medium text-brand-700 hover:underline">
+            <Link href="/store/orders" className="text-xs font-medium text-brand-700 hover:underline">
               Ver lista completa
             </Link>
           </div>
@@ -129,7 +131,7 @@ export default function StoreHomePage() {
 function ShortcutCard({ to, label }: { to: string; label: string }) {
   return (
     <Link
-      to={to}
+      href={to}
       className="flex items-center justify-center rounded-[12px] border border-line bg-white p-4 text-center text-sm font-medium text-ink hover:border-brand-300 hover:bg-brand-50"
     >
       {label}

@@ -1,8 +1,17 @@
 import type { Problem } from '../types/api'
 import { clearToken, getToken } from './session'
 
-/** Base do gateway. Em produção vem de VITE_API_URL; em dev, o padrão local. */
-export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+/**
+ * Base do gateway.
+ *
+ * <p>O navegador e o servidor do Next falam com o gateway por enderecos diferentes:
+ * de dentro do compose o host e `api-gateway`, e do navegador do usuario e
+ * `localhost`. Por isso sao duas variaveis, e nao uma.
+ */
+const BROWSER_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
+const SERVER_API_URL = process.env.INTERNAL_API_URL ?? BROWSER_API_URL
+
+export const API_URL = (typeof window === 'undefined' ? SERVER_API_URL : BROWSER_API_URL).replace(/\/$/, '')
 
 /** Prefixo publico de tudo que o cliente consome. */
 const PREFIX = '/api/v1'
@@ -89,7 +98,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError({ status: 0, code: 'NETWORK_ERROR', title: 'Sem conexão com o servidor' })
   }
 
-  if (response.status === 401 && !anonymous) {
+  // So no navegador: no servidor nao ha sessao para derrubar nem janela para avisar.
+  if (response.status === 401 && !anonymous && typeof window !== 'undefined') {
     clearToken()
     window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT))
   }

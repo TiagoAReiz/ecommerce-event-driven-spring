@@ -1,6 +1,6 @@
 /** Tipos do catalogo publico, espelhando docs/api-contracts.md linhas 1030-1244 (produtos e
  * categorias), 1897-1930 (carrinho) e 2614-2653 (frete). Nao reaproveita tipo de outra area. */
-import type { Money, Page } from '../../types/api'
+import type { Money, Page } from '@/types/api'
 
 export type Category = {
   id: number

@@ -1,6 +1,8 @@
+'use client'
+
 import { useState } from 'react'
-import { Button, Field, Input, Textarea } from '../../../components/ui'
-import { cx } from '../../../lib/format'
+import { Button, Field, Input, Textarea } from '@/components/ui'
+import { cx } from '@/lib/format'
 import { Modal } from './Modal'
 
 export type ReviewFormValues = { rate: number; title: string; description: string }

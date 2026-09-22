@@ -2,7 +2,7 @@
  * disparado daqui pelo botao "Adicionar ao carrinho"). Rotas publicas na borda vao com
  * `anonymous: true`: assim a tela funciona igual para visitante e para quem esta logado,
  * sem depender de um token que pode estar vencido. */
-import { api } from '../../lib/api'
+import { api } from '@/lib/api'
 import type {
   Availability,
   Category,

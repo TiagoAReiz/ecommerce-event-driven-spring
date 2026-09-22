@@ -1,5 +1,7 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import {
   Button,
   Card,
@@ -11,8 +13,8 @@ import {
   Select,
   Skeleton,
   Textarea,
-} from '../../../components/ui'
-import { dateTime, money } from '../../../lib/format'
+} from '@/components/ui'
+import { dateTime, money } from '@/lib/format'
 import { errorDescription, errorTitle } from '../errors'
 import {
   useAddPhoto,
@@ -32,11 +34,12 @@ const PRICE_PATTERN = /^\d+\.\d{2}$/
 
 /** Serve as duas rotas de produto: `/store/products/new` (`id` ausente, cria) e
  * `/store/products/:id` (edita). Preco entra e sai como string com 2 casas — o
- * contrato nunca aceita number, pra nao perder centavo em arredondamento. */
-export default function StoreProductFormPage() {
-  const params = useParams<{ id: string }>()
-  const isEdit = params.id !== undefined
-  const id = isEdit ? Number(params.id) : undefined
+ * contrato nunca aceita number, pra nao perder centavo em arredondamento.
+ * `id` chega por prop, vindo do segmento dinamico da rota (App Router) — ausente
+ * na rota `/store/products/new`, presente em `/store/products/[id]`. */
+export default function StoreProductFormPage({ id: idParam }: { id?: string }) {
+  const isEdit = idParam !== undefined
+  const id = isEdit ? Number(idParam) : undefined
   const validId = !isEdit || (Number.isFinite(id) && (id as number) > 0)
 
   if (!validId) {
@@ -54,7 +57,7 @@ export default function StoreProductFormPage() {
 /* ---------- criacao ---------- */
 
 function CreateProductForm() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const categoriesQuery = useCategories()
   const createProduct = useCreateProduct()
 
@@ -103,7 +106,7 @@ function CreateProductForm() {
         stock: stock === '' ? undefined : Number(stock),
         photos: photos.length > 0 ? photos.map(({ photoUrl, position }) => ({ photoUrl, position })) : undefined,
       },
-      { onSuccess: () => navigate('/store/products') },
+      { onSuccess: () => router.push('/store/products') },
     )
   }
 
@@ -153,7 +156,7 @@ function CreateProductForm() {
         )}
 
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => navigate('/store/products')} disabled={createProduct.isPending}>
+          <Button variant="secondary" onClick={() => router.push('/store/products')} disabled={createProduct.isPending}>
             Cancelar
           </Button>
           <Button onClick={submit} loading={createProduct.isPending} disabled={!canSubmit}>
@@ -168,7 +171,7 @@ function CreateProductForm() {
 /* ---------- edicao ---------- */
 
 function EditProductForm({ id }: { id: number }) {
-  const navigate = useNavigate()
+  const router = useRouter()
   const categoriesQuery = useCategories()
   const productQuery = useManageProduct(id)
   const patchProduct = usePatchProduct(id)
@@ -252,7 +255,7 @@ function EditProductForm({ id }: { id: number }) {
       setConfirmDelete(true)
       return
     }
-    deleteProduct.mutate(id, { onSuccess: () => navigate('/store/products') })
+    deleteProduct.mutate(id, { onSuccess: () => router.push('/store/products') })
   }
 
   function nextPosition() {

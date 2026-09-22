@@ -1,6 +1,8 @@
+'use client'
+
 import { useState } from 'react'
-import { Button, Field, Textarea } from '../../../components/ui'
-import { ApiError } from '../../../lib/api'
+import { Button, Field, Textarea } from '@/components/ui'
+import { ApiError } from '@/lib/api'
 import { Modal } from './Modal'
 
 const REASON_MAX = 500

@@ -1,6 +1,8 @@
+'use client'
+
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Card, ErrorState, Field, Input, PageHeader, Select, Skeleton } from '../../../components/ui'
 import { formatZipcode, onlyDigits } from '../../../lib/format'
@@ -29,9 +31,9 @@ const EMPTY_FORM: FormValues = {
   number: '',
 }
 
-/** Serve `/account/addresses/new` e `/account/addresses/:id/edit`, decidido pelo `id` da rota. */
-export default function AddressFormPage() {
-  const { id } = useParams<{ id: string }>()
+/** Serve `/account/addresses/new` e `/account/addresses/:id/edit`; o `id` chega por
+ * prop, vindo da rota (Next App Router repassa o param do segmento dinamico). */
+export default function AddressFormPage({ id }: { id?: string }) {
   const isEdit = Boolean(id)
 
   const detailQuery = useQuery({
@@ -77,7 +79,7 @@ export default function AddressFormPage() {
 }
 
 function AddressForm({ id, initial }: { id?: string; initial: FormValues }) {
-  const navigate = useNavigate()
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [values, setValues] = useState<FormValues>(initial)
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({})
@@ -89,7 +91,7 @@ function AddressForm({ id, initial }: { id?: string; initial: FormValues }) {
     mutationFn: (body: AddressInput) => (id ? replaceAddress(id, body) : createAddress(body)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['account', 'addresses'] })
-      navigate('/account/addresses')
+      router.push('/account/addresses')
     },
   })
 
@@ -186,7 +188,7 @@ function AddressForm({ id, initial }: { id?: string; initial: FormValues }) {
         )}
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate('/account/addresses')} disabled={mutation.isPending}>
+          <Button type="button" variant="secondary" onClick={() => router.push('/account/addresses')} disabled={mutation.isPending}>
             Cancelar
           </Button>
           <Button type="submit" loading={mutation.isPending}>

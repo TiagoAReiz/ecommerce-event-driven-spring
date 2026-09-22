@@ -1,23 +1,25 @@
+'use client'
+
 import { useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, Card } from '../../../components/ui'
 import { useAuth } from '../../../lib/auth'
 
 /**
  * `/login`: unica porta de entrada, sempre pelo Google (decisao registrada no
- * CLAUDE.md — sem senha armazenada). `RequireAuth` manda para ca com
- * `state.from`, entao devolvemos o usuario para o mesmo lugar apos o login.
+ * CLAUDE.md — sem senha armazenada). `RequireAuth` manda para ca com a query
+ * `from`, entao devolvemos o usuario para o mesmo lugar apos o login.
  */
 export default function LoginPage() {
   const { status, login } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = (location.state as { from?: string } | null)?.from ?? '/account'
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const from = searchParams.get('from') ?? '/account'
 
   useEffect(() => {
     // Ja logado (ex.: voltou para /login por engano): nao mostra o botao de novo.
-    if (status === 'authenticated') navigate(from, { replace: true })
-  }, [status, from, navigate])
+    if (status === 'authenticated') router.replace(from)
+  }, [status, from, router])
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">

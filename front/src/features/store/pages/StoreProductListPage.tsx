@@ -1,7 +1,9 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Button, EmptyState, ErrorState, Field, Input, LinkButton, PageHeader, Pagination, Select, Skeleton } from '../../../components/ui'
-import { money } from '../../../lib/format'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button, EmptyState, ErrorState, Field, Input, LinkButton, PageHeader, Pagination, Select, Skeleton } from '@/components/ui'
+import { money } from '@/lib/format'
 import { errorDescription, errorTitle } from '../errors'
 import { useDeleteProduct, useManageProducts } from '../queries'
 import { ProductStatusBadge } from '../components/StatusBadges'
@@ -19,7 +21,10 @@ const STATUS_OPTIONS: { value: ProductManageStatus; label: string }[] = [
 /** Lista de gestao do catalogo (`GET /products/manage`): busca, filtro de status,
  * paginacao e exclusao. Criacao e edicao ficam em `StoreProductFormPage`. */
 export default function StoreProductListPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  // useSearchParams do next/navigation e' somente leitura: mudar filtro/busca/pagina
+  // exige router.push com a query string nova, nao ha' um setSearchParams aqui.
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const status = (searchParams.get('status') as ProductManageStatus | null) ?? 'active'
   const q = searchParams.get('q') ?? ''
   const page = Number(searchParams.get('page') ?? '0')
@@ -46,7 +51,7 @@ export default function StoreProductListPage() {
       if (value === null || value === '') next.delete(key)
       else next.set(key, String(value))
     }
-    setSearchParams(next)
+    router.push(`/store/products?${next.toString()}`)
   }
 
   function confirmDelete(id: number) {

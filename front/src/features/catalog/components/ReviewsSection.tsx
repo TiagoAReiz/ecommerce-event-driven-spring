@@ -1,19 +1,33 @@
+'use client'
+
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { EmptyState, ErrorState, Pagination, Select, Skeleton } from '../../../components/ui'
-import { date } from '../../../lib/format'
+import { EmptyState, ErrorState, Pagination, Select, Skeleton } from '@/components/ui'
+import { date } from '@/lib/format'
 import { fetchReviews } from '../api'
 import { errorDescription, errorTitle } from '../errors'
 import { RatingStars } from './RatingStars'
+import type { ReviewsResponse } from '../types'
 
 /** Resumo (media + distribuicao por nota) e a lista paginada de avaliacoes do produto. */
-export function ReviewsSection({ productId }: { productId: string }) {
+export function ReviewsSection({
+  productId,
+  initialReviews,
+}: {
+  productId: string
+  initialReviews?: ReviewsResponse
+}) {
   const [rate, setRate] = useState<number | undefined>(undefined)
   const [page, setPage] = useState(0)
+
+  // initialReviews so bate com a chave por que a rota servidor busca sem filtro de
+  // nota e na primeira pagina; qualquer outro filtro precisa buscar de novo.
+  const isInitialFilter = rate === undefined && page === 0
 
   const reviews = useQuery({
     queryKey: ['catalog', 'product', productId, 'reviews', rate ?? 'all', page],
     queryFn: () => fetchReviews(productId, { rate, page, size: 20, sort: 'createdAt,desc' }),
+    initialData: isInitialFilter ? initialReviews : undefined,
   })
 
   function changeRate(value: string) {

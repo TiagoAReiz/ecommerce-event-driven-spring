@@ -1,3 +1,5 @@
+'use client'
+
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -5,8 +7,8 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react'
-import { Link } from 'react-router-dom'
-import { cx } from '../../lib/format'
+import Link from 'next/link'
+import { cx } from '@/lib/format'
 
 /* Kit visual da loja: branco e azul, um jeito so de desenhar cada coisa.
    Se uma tela precisar de um botao diferente, o botao entra aqui. */
@@ -67,7 +69,7 @@ export function LinkButton({
   className?: string
 }) {
   return (
-    <Link to={to} className={cx(BUTTON_BASE, BUTTON_VARIANT[variant], BUTTON_SIZE[size], className)}>
+    <Link href={to} className={cx(BUTTON_BASE, BUTTON_VARIANT[variant], BUTTON_SIZE[size], className)}>
       {children}
     </Link>
   )

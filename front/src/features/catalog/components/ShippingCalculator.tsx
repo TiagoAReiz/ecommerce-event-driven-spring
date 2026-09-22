@@ -1,9 +1,11 @@
+'use client'
+
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ApiError } from '../../../lib/api'
-import { Button, Field, Input } from '../../../components/ui'
-import { formatZipcode, money, onlyDigits } from '../../../lib/format'
+import { ApiError } from '@/lib/api'
+import { Button, Field, Input } from '@/components/ui'
+import { formatZipcode, money, onlyDigits } from '@/lib/format'
 import { fetchShippingQuote } from '../api'
 
 /** Calculadora de frete do detalhe do produto. So consulta quando o usuario manda

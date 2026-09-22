@@ -1,5 +1,5 @@
-import { Badge } from '../../../components/ui'
-import type { OrderStatus, PaymentStatus, ShipmentStatus } from '../../orders/types'
+import { Badge } from '@/components/ui'
+import type { OrderStatus, PaymentStatus, ShipmentStatus } from '@/features/orders/types'
 import type { ProductManageItem } from '../types'
 
 type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'

@@ -1,4 +1,4 @@
-import { cx } from '../../../lib/format'
+import { cx } from '@/lib/format'
 
 /** Estrelas de avaliacao. Sem biblioteca de icones no projeto, entao e texto mesmo:
  * caractere unicode, acessivel via aria-label com o numero por extenso. */

@@ -1,0 +1,3 @@
+module.exports=[3363,a=>{"use strict";var b=a.i(7997),c=a.i(89932);a.s(["default",0,function(){return(0,b.jsxs)(b.Fragment,{children:[(0,b.jsx)(c.PageHeader,{title:"Página não encontrada"}),(0,b.jsx)(c.EmptyState,{title:"Este endereço não existe",description:"O link pode estar errado ou a página pode ter saído do ar.",action:(0,b.jsx)(c.LinkButton,{to:"/",children:"Ir para a vitrine"})})]})}])},17537,function(a){a.n(a.i(3363))}];
+
+//# sourceMappingURL=src_app_not-found_tsx_1863-sq._.js.map

@@ -1,3 +1,5 @@
+'use client'
+
 import { Button, Card } from '../../../components/ui'
 import { money } from '../../../lib/format'
 import { CartIssueBadges } from './CartIssueBadges'

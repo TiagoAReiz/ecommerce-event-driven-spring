@@ -1,7 +1,9 @@
+'use client'
+
 /** Hooks TanStack Query da area da loja. Toda chave comeca com 'store' (exigencia da
  * tarefa) para nao colidir com o cache das areas de vitrine/conta/pedidos. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchCategories } from '../catalog/api'
+import { fetchCategories } from '@/features/catalog/api'
 import {
   addPhoto,
   cancelOrder,

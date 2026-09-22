@@ -1,13 +1,15 @@
+'use client'
+
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Button, EmptyState, ErrorState, Field, Input, PageHeader, Pagination, Select, Skeleton } from '../../../components/ui'
-import { dateTime, money } from '../../../lib/format'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button, EmptyState, ErrorState, Field, Input, PageHeader, Pagination, Select, Skeleton } from '@/components/ui'
+import { dateTime, money } from '@/lib/format'
 import { errorDescription, errorTitle } from '../errors'
 import { useCancelShipment, useManageShipments, usePatchShipment } from '../queries'
 import { ShipmentStatusBadge } from '../components/StatusBadges'
 import { ReasonModal } from '../components/ReasonModal'
 import type { ShipmentOwnerStatus } from '../types'
-import type { ShipmentStatus } from '../../orders/types'
+import type { ShipmentStatus } from '@/features/orders/types'
 
 const PAGE_SIZE = 20
 
@@ -45,7 +47,10 @@ const STATUS_OPTIONS: { value: ShipmentStatus | ''; label: string }[] = [
  * oferecidas aqui sao so' as que o contrato deixa a loja pedir — `delivered` e'
  * do comprador e nunca aparece como botao nesta tela. */
 export default function StoreShipmentListPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  // useSearchParams do next/navigation e' somente leitura: mudar filtro/pagina
+  // exige router.push com a query string nova, nao ha' um setSearchParams aqui.
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const status = (searchParams.get('status') as ShipmentStatus | null) ?? undefined
   const page = Number(searchParams.get('page') ?? '0')
 
@@ -62,7 +67,7 @@ export default function StoreShipmentListPage() {
       if (value === null || value === '') next.delete(key)
       else next.set(key, value)
     }
-    setSearchParams(next)
+    router.push(`/store/shipments?${next.toString()}`)
   }
 
   function applyTransition(shipmentId: number, nextStatus: ShipmentOwnerStatus) {

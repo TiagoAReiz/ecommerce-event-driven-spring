@@ -1,3 +1,5 @@
+'use client'
+
 import { useQuery } from '@tanstack/react-query'
 import { Button, Card, EmptyState, ErrorState, LinkButton, Skeleton } from '../../../components/ui'
 import { formatZipcode } from '../../../lib/format'

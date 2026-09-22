@@ -1,7 +1,9 @@
+'use client'
+
 import { useState } from 'react'
-import { Card, EmptyState, ErrorState, PageHeader, Pagination, Skeleton } from '../../../components/ui'
-import { ApiError } from '../../../lib/api'
-import { date } from '../../../lib/format'
+import { Card, EmptyState, ErrorState, PageHeader, Pagination, Skeleton } from '@/components/ui'
+import { ApiError } from '@/lib/api'
+import { date } from '@/lib/format'
 import { ReviewFormModal } from '../components/ReviewFormModal'
 import type { ReviewFormValues } from '../components/ReviewFormModal'
 import { useCreateReview, usePendingReviews } from '../queries'

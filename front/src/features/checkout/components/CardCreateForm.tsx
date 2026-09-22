@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react'
 import { Button, Field, Input, Select } from '../../../components/ui'
 import { ApiError, newIdempotencyKey } from '../../../lib/api'

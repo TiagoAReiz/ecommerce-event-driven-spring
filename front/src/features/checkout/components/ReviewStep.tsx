@@ -1,3 +1,5 @@
+'use client'
+
 import { useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Card, ErrorState, LinkButton, Skeleton } from '../../../components/ui'

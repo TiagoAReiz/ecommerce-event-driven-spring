@@ -1,13 +1,13 @@
-import { Link } from 'react-router-dom'
-import { money } from '../../../lib/format'
-import { Badge, Card } from '../../../components/ui'
+import Link from 'next/link'
+import { money } from '@/lib/format'
+import { Badge, Card } from '@/components/ui'
 import type { ProductSummary } from '../types'
 import { RatingStars } from './RatingStars'
 
 /** Card de produto usado na home e na listagem. Um jeito so de mostrar produto na loja. */
 export function ProductCard({ product }: { product: ProductSummary }) {
   return (
-    <Link to={`/products/${product.id}`} className="block h-full">
+    <Link href={`/products/${product.id}`} className="block h-full">
       <Card className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md">
         <div className="aspect-square w-full bg-brand-50">
           {product.photoUrl ? (

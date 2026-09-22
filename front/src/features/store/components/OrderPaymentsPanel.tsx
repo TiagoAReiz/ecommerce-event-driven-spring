@@ -1,6 +1,8 @@
+'use client'
+
 import { useState } from 'react'
-import { Button, Skeleton } from '../../../components/ui'
-import { money, dateTime } from '../../../lib/format'
+import { Button, Skeleton } from '@/components/ui'
+import { money, dateTime } from '@/lib/format'
 import { errorDescription } from '../errors'
 import { useCancelPayment, usePaymentsByOrder, useSyncPayment } from '../queries'
 import { PaymentStatusBadge } from './StatusBadges'

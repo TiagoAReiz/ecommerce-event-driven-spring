@@ -1,18 +1,23 @@
+'use client'
+
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useRouter, useSearchParams } from 'next/navigation'
+import type { ReadonlyURLSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Button, EmptyState, ErrorState, Field, Input, Pagination, PageHeader, Select, Skeleton } from '../../../components/ui'
-import { money } from '../../../lib/format'
+import { Button, EmptyState, ErrorState, Field, Input, Pagination, PageHeader, Select, Skeleton } from '@/components/ui'
+import { money } from '@/lib/format'
 import { fetchCategories, fetchProducts } from '../api'
 import type { ProductListParams } from '../api'
 import { errorDescription, errorTitle } from '../errors'
 import { ProductCard } from '../components/ProductCard'
+import type { ProductsResponse } from '../types'
 
 const PAGE_SIZE = 20
 
 /** Le os filtros direto da URL: ela e a fonte da verdade, assim o link e compartilhavel
- * e o back/forward do navegador funciona sem estado escondido em componente. */
-function readParams(searchParams: URLSearchParams): ProductListParams {
+ * e o back/forward do navegador funciona sem estado escondido em componente.
+ * Exportada porque a rota servidor usa a mesma leitura para buscar o initialData. */
+export function readParams(searchParams: URLSearchParams | ReadonlyURLSearchParams): ProductListParams {
   const categoryId = searchParams.get('categoryId')
   const minPrice = searchParams.get('minPrice')
   const maxPrice = searchParams.get('maxPrice')
@@ -34,9 +39,14 @@ function readParams(searchParams: URLSearchParams): ProductListParams {
   }
 }
 
-export default function ProductListPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+export default function ProductListPage({ initialData }: { initialData?: ProductsResponse }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const params = useMemo(() => readParams(searchParams), [searchParams])
+
+  // initialData so vale para a mesma combinacao de filtros que o servidor buscou:
+  // guarda a URL de entrada e compara, senao um filtro novo mostraria dado errado.
+  const [initialSearchParams] = useState(() => searchParams.toString())
 
   // Campo de busca vive em estado local e so escreve na URL depois do debounce:
   // uma requisicao por pausa de digitacao, nao uma por tecla.
@@ -60,19 +70,21 @@ export default function ProductListPage() {
   const products = useQuery({
     queryKey: ['catalog', 'products', searchParams.toString()],
     queryFn: () => fetchProducts(params),
+    initialData: searchParams.toString() === initialSearchParams ? initialData : undefined,
   })
 
   function updateParams(patch: Record<string, string | number | boolean | null>) {
-    const next = new URLSearchParams(searchParams)
+    const next = new URLSearchParams(searchParams.toString())
     for (const [key, value] of Object.entries(patch)) {
       if (value === null || value === '' || value === undefined) next.delete(key)
       else next.set(key, String(value))
     }
-    setSearchParams(next)
+    const query = next.toString()
+    router.push(query ? `/products?${query}` : '/products')
   }
 
   function clearFilters() {
-    setSearchParams(new URLSearchParams())
+    router.push('/products')
     setQDraft('')
   }
 

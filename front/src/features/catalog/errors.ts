@@ -1,4 +1,4 @@
-import { ApiError } from '../../lib/api'
+import { ApiError } from '@/lib/api'
 
 /** Titulo curto por status HTTP, para as telas do catalogo nao repetirem o mesmo switch.
  * O detalhe (motivo exato) sempre vem do backend via `error.message`. */

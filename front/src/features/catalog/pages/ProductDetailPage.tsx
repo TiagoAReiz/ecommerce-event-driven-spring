@@ -1,53 +1,54 @@
+'use client'
+
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError } from '../../../lib/api'
-import { useAuth } from '../../../lib/auth'
-import { Badge, Button, EmptyState, ErrorState, LinkButton, PageHeader, Skeleton } from '../../../components/ui'
-import { money } from '../../../lib/format'
+import { ApiError } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { Badge, Button, EmptyState, ErrorState, LinkButton, PageHeader, Skeleton } from '@/components/ui'
+import { money } from '@/lib/format'
 import { addToCart, fetchAvailability, fetchPhotos, fetchProduct } from '../api'
 import { errorDescription, errorTitle } from '../errors'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { RatingStars } from '../components/RatingStars'
 import { ShippingCalculator } from '../components/ShippingCalculator'
 import { ReviewsSection } from '../components/ReviewsSection'
+import type { ProductDetail, ProductPhoto, ReviewsResponse } from '../types'
 
 const ITEM_QUANTITY_LIMIT = 99
 
-export default function ProductDetailPage() {
-  // useParams pode devolver undefined so na teoria (a rota exige :id); manter os
-  // hooks incondicionais evita quebrar a ordem deles entre renders.
-  const params = useParams<{ id: string }>()
-  const id = params.id ?? ''
-
+export default function ProductDetailPage({
+  id,
+  initialProduct,
+  initialPhotos,
+  initialReviews,
+}: {
+  // id vem da rota (params do Next), nao mais de useParams: a pagina servidor ja
+  // resolveu e chamou notFound() se o produto nao existisse.
+  id: string
+  initialProduct?: ProductDetail
+  initialPhotos?: ProductPhoto[]
+  initialReviews?: ReviewsResponse
+}) {
   const product = useQuery({
     queryKey: ['catalog', 'product', id],
     queryFn: () => fetchProduct(id),
-    enabled: id !== '',
+    initialData: initialProduct,
   })
 
-  // Disponibilidade nunca e cacheada (contrato §4.2): sempre busca de novo.
+  // Disponibilidade nunca e cacheada (contrato §4.2): sempre busca de novo, mesmo
+  // vindo initialData de produto/fotos/avaliacoes.
   const availability = useQuery({
     queryKey: ['catalog', 'product', id, 'availability'],
     queryFn: () => fetchAvailability(id),
     staleTime: 0,
-    enabled: id !== '',
   })
 
   const photos = useQuery({
     queryKey: ['catalog', 'product', id, 'photos'],
     queryFn: () => fetchPhotos(id),
-    enabled: id !== '',
+    initialData: initialPhotos,
   })
-
-  if (!id) {
-    return (
-      <>
-        <PageHeader title="Produto" />
-        <EmptyState title="Produto não encontrado" action={<LinkButton to="/products">Ver produtos</LinkButton>} />
-      </>
-    )
-  }
 
   if (product.isLoading) {
     return (
@@ -108,7 +109,7 @@ export default function ProductDetailPage() {
 
         <div className="flex flex-col gap-4">
           <div>
-            <Link to={`/products?categoryId=${data.category.id}`} className="text-sm text-brand-700 hover:underline">
+            <Link href={`/products?categoryId=${data.category.id}`} className="text-sm text-brand-700 hover:underline">
               {data.category.name}
             </Link>
             <h1 className="mt-1 text-2xl font-semibold text-ink">{data.name}</h1>
@@ -132,7 +133,7 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="mt-12">
-        <ReviewsSection productId={id} />
+        <ReviewsSection productId={id} initialReviews={initialReviews} />
       </div>
     </div>
   )

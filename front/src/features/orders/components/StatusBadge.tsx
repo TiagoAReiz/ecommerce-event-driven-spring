@@ -1,4 +1,4 @@
-import { Badge } from '../../../components/ui'
+import { Badge } from '@/components/ui'
 import type { OrderStatus, PaymentStatus, ShipmentStatus } from '../types'
 
 type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'

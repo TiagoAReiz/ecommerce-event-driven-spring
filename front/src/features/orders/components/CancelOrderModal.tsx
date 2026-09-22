@@ -1,6 +1,8 @@
+'use client'
+
 import { useState } from 'react'
-import { ApiError } from '../../../lib/api'
-import { Button, Field, Textarea } from '../../../components/ui'
+import { ApiError } from '@/lib/api'
+import { Button, Field, Textarea } from '@/components/ui'
 import { Modal } from './Modal'
 import { useCancelOrder } from '../queries'
 

@@ -1,3 +1,5 @@
+'use client'
+
 import type { ReactNode } from 'react'
 
 /** Dialogo simples em overlay: a loja precisa de confirmacao antes de acoes

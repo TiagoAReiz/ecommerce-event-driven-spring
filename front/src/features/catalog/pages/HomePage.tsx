@@ -1,22 +1,34 @@
+'use client'
+
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { ApiError } from '../../../lib/api'
-import { Card, EmptyState, ErrorState, PageHeader, Skeleton } from '../../../components/ui'
+import Link from 'next/link'
+import { ApiError } from '@/lib/api'
+import { Card, EmptyState, ErrorState, PageHeader, Skeleton } from '@/components/ui'
 import { fetchCategories, fetchProducts } from '../api'
 import { ProductCard } from '../components/ProductCard'
-import type { ProductSummary } from '../types'
+import type { Category, ProductSummary, ProductsResponse } from '../types'
 
 /** Vitrine: categorias para navegar e destaques (mais bem avaliados) para puxar o clique.
  * Nao existe endpoint de "aleatorio" no contrato, entao destaque e o topo por nota. */
-export default function HomePage() {
+export default function HomePage({
+  initialCategories,
+  initialHighlights,
+}: {
+  initialCategories?: { content: Category[] }
+  initialHighlights?: ProductsResponse
+}) {
+  // initialData vem do servidor: a primeira pintura ja sai com conteudo, e o
+  // TanStack Query so revalida depois, sem piscar esqueleto na frente do usuario.
   const categories = useQuery({
     queryKey: ['catalog', 'categories'],
     queryFn: () => fetchCategories(false),
+    initialData: initialCategories,
   })
 
   const highlights = useQuery({
     queryKey: ['catalog', 'products', 'highlights'],
     queryFn: () => fetchProducts({ sort: 'rating,desc', size: 8, page: 0 }),
+    initialData: initialHighlights,
   })
 
   return (
@@ -92,7 +104,7 @@ function CategoriesSection({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
       {content.map((category) => (
-        <Link key={category.id} to={`/products?categoryId=${category.id}`}>
+        <Link key={category.id} href={`/products?categoryId=${category.id}`}>
           <Card className="flex flex-col gap-0.5 px-4 py-3 transition-shadow hover:shadow-md">
             <span className="text-sm font-medium text-ink">{category.name}</span>
             <span className="text-xs text-muted">{category.productCount} produtos</span>

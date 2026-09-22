@@ -1,6 +1,8 @@
+'use client'
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, newIdempotencyKey } from '../../lib/api'
-import type { Page } from '../../types/api'
+import { api, newIdempotencyKey } from '@/lib/api'
+import type { Page } from '@/types/api'
 import { isFinalOrderStatus } from './types'
 import type {
   CreateReviewRequest,

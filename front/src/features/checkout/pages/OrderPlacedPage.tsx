@@ -1,4 +1,5 @@
-import { useParams } from 'react-router-dom'
+'use client'
+
 import { Card, EmptyState, ErrorState, LinkButton, PageHeader, Skeleton } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'
 import { dateTime, money } from '../../../lib/format'
@@ -15,10 +16,10 @@ const STATUS_MESSAGE: Partial<Record<OrderStatus, string>> = {
   delivered: 'Seu pedido foi entregue.',
 }
 
-/** `/checkout/done/:orderId`: confirmacao depois do pagamento aceito. */
-export default function OrderPlacedPage() {
-  const params = useParams<{ orderId: string }>()
-  const orderId = Number(params.orderId)
+/** `/checkout/done/:orderId`: confirmacao depois do pagamento aceito.
+ * `orderId` chega por prop, vindo do segmento dinamico da rota. */
+export default function OrderPlacedPage({ orderId: orderIdParam }: { orderId: string }) {
+  const orderId = Number(orderIdParam)
   const validOrderId = Number.isFinite(orderId) && orderId > 0
 
   const orderQuery = useOrder(validOrderId ? orderId : Number.NaN)

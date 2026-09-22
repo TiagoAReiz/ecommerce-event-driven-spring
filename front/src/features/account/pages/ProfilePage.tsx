@@ -1,6 +1,8 @@
+'use client'
+
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Badge,
@@ -216,13 +218,13 @@ function ShortcutLink({ to, title, description }: { to: string; title: string; d
 
 function DangerCard() {
   const { logout } = useAuth()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
 
   const mutation = useMutation({
     mutationFn: deleteMe,
     onSuccess: () => {
-      void logout().then(() => navigate('/'))
+      void logout().then(() => router.push('/'))
     },
   })
 

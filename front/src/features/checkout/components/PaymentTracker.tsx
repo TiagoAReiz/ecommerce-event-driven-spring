@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react'
 import { Button, Card, Spinner } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'

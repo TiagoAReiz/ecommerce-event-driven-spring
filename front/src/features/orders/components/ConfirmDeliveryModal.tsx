@@ -1,5 +1,7 @@
-import { ApiError } from '../../../lib/api'
-import { Button } from '../../../components/ui'
+'use client'
+
+import { ApiError } from '@/lib/api'
+import { Button } from '@/components/ui'
 import { Modal } from './Modal'
 import { useConfirmDelivery } from '../queries'
 

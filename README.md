@@ -185,56 +185,53 @@ Cache de leitura para rotas de catalogo e analise de frete. Falha de Redis nao d
 
 **Front** (`front/`)
 
-- React 19 + TypeScript, Vite
-- React Router, TanStack Query
-- Tailwind CSS 4, identidade branco e azul com tokens em `src/index.css`
-- Servido por nginx no compose; em dev, `npm run dev` na porta 3000
+- Next.js 16 (App Router) + React 19 + TypeScript
+- TanStack Query
+- Tailwind CSS 4, identidade branco e azul com tokens em `src/app/globals.css`
+- Vitrine publica renderizada no servidor; o que depende de sessao roda no navegador
+- No compose, servidor Next em modo standalone na porta 3000
 
 ---
 
 ## Como Rodar
 
 ### Pre-requisitos
-- Docker e Docker Compose
-- Chave RSA privada do gateway (gerada ou fornecida)
-- Credenciais opcionais: Google OAuth, Mercado Pago
 
-### 1. Preparar Variaveis de Ambiente
+Docker e Docker Compose. Mais nada.
 
-```bash
-# Copiar templates de variaveis
-cp micro-services/.env.example micro-services/.env
-cp micro-services/api-gateway/.env.example micro-services/api-gateway/.env
-
-# Preencher valores em micro-services/.env:
-# - STORE_OWNER_EMAIL (obrigatorio)
-# - MP_ACCESS_TOKEN, MP_PUBLIC_KEY, MP_NOTIFICATION_URL (se for testar payment)
-# - FRONT_URL (default: http://localhost:3000)
-# - Google OAuth (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET em api-gateway/.env, se for testar login)
-
-# Preencher segredos de servico (defaults fornecidos para dev local)
-```
-
-### 2. Gerar Chave RSA do Gateway
-
-O gateway precisa de uma chave privada RS256 em /micro-services/api-gateway/keys/private.pem. Se nao existir:
+### 1. Subir tudo
 
 ```bash
-# Dentro de micro-services/api-gateway/
-mkdir -p keys
-openssl genrsa -out keys/private.pem 2048
+docker compose up -d --build
 ```
 
-### 3. Subir o Ambiente
+Sobe os seis servicos, Kafka, Postgres, Redis, Debezium e a vitrine. **Nao precisa de preparo
+nenhum**: sem `.env`, sem gerar chave, sem criar banco. Se as chaves de assinatura do gateway
+nao existirem, o container gera um par descartavel no primeiro boot e avisa no log.
 
-```bash
-cd micro-services
-docker compose up --build
-```
-
-Aguarde ate todos os servicos ficarem saudaveis:
+- Loja: http://localhost:3000
 - Gateway: http://localhost:8080
-- Conectores Debezium: devem chegar a RUNNING (o script connect-init insiste ate la)
+- Conectores Debezium: chegam a RUNNING sozinhos (o `connect-init` insiste ate la)
+
+### 2. Segredos (opcionais, cada um libera uma coisa)
+
+| Variavel | Onde | Libera |
+|---|---|---|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `micro-services/api-gateway/.env` ou ambiente | o login. Sem eles a stack sobe com um marcador e o Google recusa a autorizacao |
+| `STORE_OWNER_EMAIL` | `.env` na raiz ou ambiente | define quem e o dono da loja (default: `dono@loja.local`) |
+| `MP_ACCESS_TOKEN`, `MP_PUBLIC_KEY` | `.env` na raiz ou ambiente | pagamento de verdade. Sem eles o `payment` roda em modo `fake`, com o fluxo inteiro funcionando |
+
+No Google Cloud, o redirect autorizado e `http://localhost:8080/login/oauth2/code/google` — do
+**gateway**, nao do front.
+
+Os arquivos `.env` sao opcionais: `.env.example` na raiz e em `api-gateway/` mostram o formato.
+
+### 3. Parar
+
+```bash
+docker compose down        # mantem os dados
+docker compose down -v     # apaga os volumes tambem
+```
 
 ### 4. Validar a Subida
 
@@ -243,7 +240,7 @@ Aguarde ate todos os servicos ficarem saudaveis:
 curl -X GET http://localhost:8080/health
 
 # Verificar que broker esta pronto
-docker compose exec broker /opt/kafka/bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+docker compose exec broker /opt/kafka/bin/kafka-topics.sh --list --bootstrap-server broker:9092
 
 # Verificar que conectores estao RUNNING
 curl -s http://localhost:8083/connectors | jq .

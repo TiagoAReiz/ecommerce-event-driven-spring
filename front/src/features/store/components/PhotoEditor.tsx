@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { Button, Field, Input } from '../../../components/ui'
+import { Button, Field, Input } from '@/components/ui'
 
 const MAX_PHOTOS = 10
 

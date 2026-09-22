@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { EmptyState, ErrorState, LinkButton, PageHeader, Skeleton } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'
 import { AddressStep } from '../components/AddressStep'
@@ -12,7 +14,7 @@ type Step = 'address' | 'review'
 
 /** `/checkout`: endereco -> frete e revisao -> `POST /orders`. */
 export default function CheckoutPage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const cartQuery = useCart()
   const [step, setStep] = useState<Step>('address')
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
@@ -89,7 +91,7 @@ export default function CheckoutPage() {
           cart={cart}
           address={selectedAddress}
           onBack={() => setStep('address')}
-          onConfirmed={(orderId) => navigate(`/checkout/payment/${orderId}`)}
+          onConfirmed={(orderId) => router.push(`/checkout/payment/${orderId}`)}
         />
       )}
     </>

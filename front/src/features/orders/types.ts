@@ -1,4 +1,4 @@
-import type { Money } from '../../types/api'
+import type { Money } from '@/types/api'
 
 /**
  * Tipos de pedido, envio, pagamento e avaliacao.

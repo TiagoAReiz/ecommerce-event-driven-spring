@@ -1,4 +1,4 @@
-import { ApiError } from '../../lib/api'
+import { ApiError } from '@/lib/api'
 
 /** Titulo curto por status HTTP. Espelha catalog/errors.ts, mas com o caso 403 proprio
  * da loja: aqui 403 quase sempre significa "essa conta nao e' a dona", nao "sem permissao"

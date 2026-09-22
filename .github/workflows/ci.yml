@@ -114,7 +114,9 @@ jobs:
 
       - name: Instalar dependencias
         working-directory: front
-        run: npm ci
+        # npm install, e nao npm ci: o lock nasce no Windows e nao lista os
+        # binarios nativos de Linux (lightningcss, do Tailwind).
+        run: npm install --no-audit --no-fund
 
       # O build roda `tsc -b` antes do bundle: erro de tipo quebra o job aqui,
       # que e onde custa barato.

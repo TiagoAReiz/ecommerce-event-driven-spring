@@ -1,13 +1,15 @@
+'use client'
+
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Button, EmptyState, ErrorState, Field, Input, PageHeader, Pagination, Select, Skeleton } from '../../../components/ui'
-import { date, money } from '../../../lib/format'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button, EmptyState, ErrorState, Field, Input, PageHeader, Pagination, Select, Skeleton } from '@/components/ui'
+import { date, money } from '@/lib/format'
 import { errorDescription, errorTitle } from '../errors'
 import { useCancelOrder, useManageOrders } from '../queries'
 import { OrderStatusBadge } from '../components/StatusBadges'
 import { OrderPaymentsPanel } from '../components/OrderPaymentsPanel'
 import { ReasonModal } from '../components/ReasonModal'
-import type { OrderStatus } from '../../orders/types'
+import type { OrderStatus } from '@/features/orders/types'
 
 const PAGE_SIZE = 20
 
@@ -30,7 +32,10 @@ const STATUS_OPTIONS: { value: OrderStatus | ''; label: string }[] = [
  * as tentativas de pagamento com estorno — o contrato nao tem uma rota de pagamentos
  * por loja, so' por pedido, entao o painel de estorno mora aqui. */
 export default function StoreOrderListPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  // useSearchParams do next/navigation e' somente leitura: mudar filtro/pagina
+  // exige router.push com a query string nova, nao ha' um setSearchParams aqui.
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const status = (searchParams.get('status') as OrderStatus | null) ?? undefined
   const from = searchParams.get('from') ?? ''
   const to = searchParams.get('to') ?? ''
@@ -48,7 +53,7 @@ export default function StoreOrderListPage() {
       if (value === null || value === '') next.delete(key)
       else next.set(key, value)
     }
-    setSearchParams(next)
+    router.push(`/store/orders?${next.toString()}`)
   }
 
   return (

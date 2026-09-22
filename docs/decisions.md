@@ -85,7 +85,10 @@ quebrou no caminho, e o que ficou decidido:
 
 | Decisão | Por quê |
 |---|---|
-| SPA em Vite + React + TypeScript, sem framework de servidor | A sessão é um Bearer guardado no navegador; não há nada para renderizar no servidor que justifique SSR, e um app estático é servido por nginx sem mais um processo para operar |
+| Next.js (App Router) + TypeScript | A vitrine precisa aparecer em busca, e é o Next que dá renderização no servidor sem montar um segundo backend |
+| Vitrine renderizada no servidor; o que depende de sessão, no navegador | O catálogo é público e sai pronto no HTML. A sessão é um Bearer no `sessionStorage`: não há cookie para o servidor ler, então tentar renderizar tela autenticada no servidor só criaria um caminho que nunca funciona |
+| Home e listagem por requisição, sem congelar no build | O catálogo nasce vazio e é cadastrado com a loja no ar: uma página gerada no build mostraria a vitrine vazia para quem chegasse primeiro, e preço e estoque mudam o tempo todo |
+| Duas variáveis para o endereço da API: `NEXT_PUBLIC_API_URL` e `INTERNAL_API_URL` | O navegador fala com `localhost` e o servidor do Next fala com `api-gateway` dentro da rede do compose. Uma variável só quebraria um dos dois |
 | Porta 3000, fixa | O gateway só aceita uma origem no CORS e só devolve o login para ela (`app.front-url`). Outra porta quebra login e todas as chamadas |
 | Token no `sessionStorage`, nunca em cookie | O contrato é Bearer no header. `sessionStorage` morre com a aba; `localStorage` sobreviveria além da sessão sem motivo |
 | Token capturado do fragmento e apagado da barra de endereços na hora | Fragmento não vai ao servidor nem ao `Referer`; apagar evita que fique no histórico ou num print |
@@ -93,6 +96,7 @@ quebrou no caminho, e o que ficou decidido:
 | Estado de servidor no TanStack Query, sem store global | O que a tela mostra é cópia do servidor; cache, revalidação e invalidação já são o problema que a biblioteca resolve |
 | Cores só por tokens em `src/index.css` | Sem isso cada tela inventa o seu azul e a identidade se perde na terceira tela |
 | Uma pasta por área (`features/<área>`), cada uma dona das suas telas | Permitiu implementar as cinco áreas em paralelo sem que duas mexessem no mesmo arquivo |
+| Uma fronteira de Suspense no layout, em vez de uma por página | As telas com sessão leem a query string, e sem a fronteira o Next não consegue pré-renderizar nenhuma página que passe pela casca |
 | Acompanhamento do PIX e do pedido relê o recurso, com parada | Ler `GET /payments/{id}` a cada 5 s é barato; `sync` tem limite de 1 por minuto no contrato. Para em estado final e não roda com a aba oculta |
 | Cartão tokenizado no navegador pelo SDK do Mercado Pago | O número do cartão nunca chega ao nosso backend — é o que mantém o PCI-DSS fora desta aplicação |
 
@@ -102,3 +106,15 @@ quebrou no caminho, e o que ficou decidido:
 |---|---|
 | O CORS do gateway declarava origem e métodos, mas nenhum header | Sem `allowedHeaders`, o preflight de qualquer chamada com `Authorization` era recusado: **nenhuma** tela de navegador conseguiria falar com a API |
 | `PUT /cart/items/{idProduct}` exigia `idProduct` também no corpo | Reaproveitava o corpo do `POST` e respondia `400` para quem seguisse o contrato |
+
+## Subir a stack
+
+| Decisão | Por quê |
+|---|---|
+| Um `docker-compose.yaml` na raiz, com backend e vitrine | `docker compose up -d --build` é o único comando para ter a loja inteira no ar; não há um segundo arquivo nem um diretório certo de onde rodar |
+| Sobe sem `.env` e sem chave: tudo tem default no compose | Um clone novo tinha que copiar dois `.env` e gerar um par RSA antes de qualquer coisa. O que falta agora são só os segredos que ligam Google e Mercado Pago |
+| O gateway gera um par RSA descartável no primeiro boot, se não houver | As chaves de assinatura não são versionadas, e sem elas o serviço não sobe. O log avisa que é descartável: as sessões morrem quando o container é recriado |
+| As chaves ficam num volume nomeado, não num bind somente leitura | Num clone novo a pasta não existe no host, e o bind read-only impedia o próprio container de gerar o par |
+| `restart: unless-stopped` nos serviços | Quem sobe antes do banco aceitar conexão morria de vez e exigia um segundo `compose up`; agora volta sozinho |
+| No Docker o front usa `npm install`, não `npm ci` | O lock nasce no Windows e não lista os binários nativos de Linux (o `lightningcss` do Tailwind), e o `ci` recusa a instalação |
+| `.gitattributes` fixa LF em `*.sh` e `mvnw` | Script com CRLF leva um CR no shebang e o container responde "no such file or directory" ao tentar executá-lo |

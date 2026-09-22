@@ -1,7 +1,10 @@
-import { Link, useSearchParams } from 'react-router-dom'
-import { Card, EmptyState, ErrorState, Pagination, PageHeader, Select, Skeleton } from '../../../components/ui'
-import { ApiError } from '../../../lib/api'
-import { date, money } from '../../../lib/format'
+'use client'
+
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Card, EmptyState, ErrorState, Pagination, PageHeader, Select, Skeleton } from '@/components/ui'
+import { ApiError } from '@/lib/api'
+import { date, money } from '@/lib/format'
 import { useOrders } from '../queries'
 import { OrderStatusBadge } from '../components/StatusBadge'
 import type { OrderStatus } from '../types'
@@ -19,7 +22,10 @@ const STATUS_OPTIONS: { value: OrderStatus | ''; label: string }[] = [
 
 /** Lista de pedidos do comprador, com filtro por status e paginação. */
 export default function OrderListPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  // useSearchParams do next/navigation e' somente leitura: mudar filtro/pagina
+  // exige router.push com a query string nova, nao ha' um setSearchParams aqui.
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const status = (searchParams.get('status') as OrderStatus | null) ?? undefined
   const page = Number(searchParams.get('page') ?? '0')
 
@@ -30,13 +36,13 @@ export default function OrderListPage() {
     if (value) next.set('status', value)
     else next.delete('status')
     next.delete('page')
-    setSearchParams(next)
+    router.push(`/orders?${next.toString()}`)
   }
 
   function setPage(nextPage: number) {
     const next = new URLSearchParams(searchParams)
     next.set('page', String(nextPage))
-    setSearchParams(next)
+    router.push(`/orders?${next.toString()}`)
   }
 
   return (
@@ -74,7 +80,7 @@ export default function OrderListPage() {
           title="Nenhum pedido por aqui"
           description="Quando você comprar algo, ele aparece nesta lista."
           action={
-            <Link to="/products" className="text-sm font-medium text-brand-700 hover:underline">
+            <Link href="/products" className="text-sm font-medium text-brand-700 hover:underline">
               Ver produtos
             </Link>
           }
@@ -84,7 +90,7 @@ export default function OrderListPage() {
       {ordersQuery.data && ordersQuery.data.content.length > 0 && (
         <div className="flex flex-col gap-3">
           {ordersQuery.data.content.map((order) => (
-            <Link key={order.id} to={`/orders/${order.id}`}>
+            <Link key={order.id} href={`/orders/${order.id}`}>
               <Card className="flex items-center gap-4 p-4 hover:border-brand-300">
                 {order.firstItem.productPhotoUrl ? (
                   <img

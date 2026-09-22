@@ -1,8 +1,9 @@
+'use client'
+
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Button, Card, EmptyState, ErrorState, PageHeader, Skeleton } from '../../../components/ui'
-import { ApiError } from '../../../lib/api'
-import { dateTime, money } from '../../../lib/format'
+import { Button, Card, EmptyState, ErrorState, PageHeader, Skeleton } from '@/components/ui'
+import { ApiError } from '@/lib/api'
+import { dateTime, money } from '@/lib/format'
 import { CancelOrderModal } from '../components/CancelOrderModal'
 import { ConfirmDeliveryModal } from '../components/ConfirmDeliveryModal'
 import { OrderStatusBadge, PaymentStatusBadge, ShipmentStatusBadge } from '../components/StatusBadge'
@@ -14,9 +15,9 @@ const CANCELLABLE_STATUSES = new Set(['pending', 'paid'])
 /** Status de envio em que o comprador ja pode confirmar o recebimento. */
 const CONFIRMABLE_SHIPMENT_STATUSES = new Set(['in_transit', 'out_for_delivery'])
 
-export default function OrderDetailPage() {
-  const params = useParams<{ id: string }>()
-  const id = Number(params.id)
+export default function OrderDetailPage({ id: idParam }: { id: string }) {
+  // id chega por prop, vindo do segmento dinamico da rota (App Router), nao mais de useParams.
+  const id = Number(idParam)
   const validId = Number.isFinite(id) && id > 0
 
   const [showCancel, setShowCancel] = useState(false)

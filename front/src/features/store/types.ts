@@ -2,9 +2,9 @@
  * (produto/categoria, faixas 1030-1700), 8 (pedido, faixas 1860-2042), 9 (pagamento,
  * faixas 2269-2520) e 10 (envio, faixas 2594-2830). Nao reaproveita tipo de outra area
  * por edicao: so por import. */
-import type { Money, Page } from '../../types/api'
-import type { ProductCategoryRef, ProductPhoto } from '../catalog/types'
-import type { OrderStatus, PaymentStatus, ShipmentStatus } from '../orders/types'
+import type { Money, Page } from '@/types/api'
+import type { ProductCategoryRef, ProductPhoto } from '@/features/catalog/types'
+import type { OrderStatus, PaymentStatus, ShipmentStatus } from '@/features/orders/types'
 
 /** `status` de `GET /products/manage` (contrato, linha ~1244). */
 export type ProductManageStatus = 'active' | 'out_of_stock' | 'deleted' | 'all'

@@ -1,5 +1,7 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { Button, EmptyState, ErrorState, PageHeader, Skeleton } from '../../../components/ui'
 import { ApiError } from '../../../lib/api'
 import { money } from '../../../lib/format'
@@ -22,12 +24,12 @@ const METHOD_LABEL: Record<PaymentMethodId, string> = {
   checkout_pro: 'Checkout Pro',
 }
 
-/** `/checkout/payment/:orderId`: escolhe a modalidade, cria em `POST /payments`, acompanha. */
-export default function PaymentPage() {
-  const params = useParams<{ orderId: string }>()
-  const orderId = Number(params.orderId)
+/** `/checkout/payment/:orderId`: escolhe a modalidade, cria em `POST /payments`, acompanha.
+ * `orderId` chega por prop, vindo do segmento dinamico da rota. */
+export default function PaymentPage({ orderId: orderIdParam }: { orderId: string }) {
+  const orderId = Number(orderIdParam)
   const validOrderId = Number.isFinite(orderId) && orderId > 0
-  const navigate = useNavigate()
+  const router = useRouter()
   const { user } = useAuth()
 
   const orderQuery = useOrder(validOrderId ? orderId : Number.NaN)
@@ -46,18 +48,18 @@ export default function PaymentPage() {
   // Pagamento aprovado (nesta sessao ou numa retomada): segue para a confirmacao do pedido.
   useEffect(() => {
     if (paymentQuery.data?.status === 'captured') {
-      navigate(`/checkout/done/${orderId}`, { replace: true })
+      router.replace(`/checkout/done/${orderId}`)
     }
-  }, [paymentQuery.data?.status, navigate, orderId])
+  }, [paymentQuery.data?.status, router, orderId])
 
   // Pedido ja saiu de `pending` por outro caminho (ex.: webhook chegou antes do polling
   // daqui pegar o pagamento): nao ha mais o que fazer nesta tela, so seguir.
   const orderStatus = orderQuery.data?.status
   useEffect(() => {
     if (orderStatus && orderStatus !== 'pending' && orderStatus !== 'cancelled') {
-      navigate(`/checkout/done/${orderId}`, { replace: true })
+      router.replace(`/checkout/done/${orderId}`)
     }
-  }, [orderStatus, navigate, orderId])
+  }, [orderStatus, router, orderId])
 
   if (!validOrderId) {
     return (
@@ -120,7 +122,7 @@ export default function PaymentPage() {
           title="Este pedido foi cancelado"
           description="Não é mais possível pagar por ele."
           action={
-            <Button variant="secondary" onClick={() => navigate(`/orders/${order.id}`)}>
+            <Button variant="secondary" onClick={() => router.push(`/orders/${order.id}`)}>
               Ver pedido
             </Button>
           }
