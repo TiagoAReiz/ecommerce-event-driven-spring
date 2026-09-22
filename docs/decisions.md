@@ -118,3 +118,16 @@ quebrou no caminho, e o que ficou decidido:
 | `restart: unless-stopped` nos serviços | Quem sobe antes do banco aceitar conexão morria de vez e exigia um segundo `compose up`; agora volta sozinho |
 | No Docker o front usa `npm install`, não `npm ci` | O lock nasce no Windows e não lista os binários nativos de Linux (o `lightningcss` do Tailwind), e o `ci` recusa a instalação |
 | `.gitattributes` fixa LF em `*.sh` e `mvnw` | Script com CRLF leva um CR no shebang e o container responde "no such file or directory" ao tentar executá-lo |
+
+## Armazenamento de imagens
+
+| Decisão | Por quê |
+|---|---|
+| MinIO no compose, falando S3 | Foto é binário: no Postgres incharia banco e backup, e servida por microsserviço gastaria JVM para entregar arquivo estático. Como fala S3, trocar por um bucket de verdade é mudar endereço e credencial |
+| Envio por URL assinada, não upload pelo backend | O binário nunca passa pela JVM: a tela pede a URL, manda o arquivo direto ao armazenamento e só então registra a foto. O backend continua decidindo quem pode enviar, o que pode enviar e com que nome |
+| A URL é assinada com o endereço **público** | Uma URL assinada só vale para o host com que foi assinada, e quem a usa é o navegador. Assinar é cálculo local, então o serviço assina com `S3_PUBLIC_URL` e usa `S3_ENDPOINT` para as próprias operações |
+| A chave do objeto é `{idProduto}/{uuid}.{ext}`, com extensão vinda do `contentType` | O nome que o cliente manda pode colidir, carregar caminho (`../`) ou mentir sobre o tipo |
+| Bucket com leitura anônima | Foto de vitrine é pública. Assinar cada `<img>` só somaria latência e quebraria cache do navegador |
+| Remover a foto apaga o objeto, mas a falha ao apagar não derruba a remoção | O registro no banco é a verdade; objeto órfão é lixo barato, foto fantasma na vitrine é defeito visível |
+| A validação de URL aceita `http` quando é o nosso próprio bucket | Em ambiente local o MinIO serve por `http`, e foi a própria API que devolveu aquela URL. Para URL de fora, segue exigindo `https` |
+| Enviar arquivo só depois do produto existir | A URL assinada é por produto; na criação ainda não há id. Enquanto isso, o cadastro aceita colar uma URL |

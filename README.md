@@ -100,7 +100,8 @@ graph TB
 | **Order** | 8083 | order_db | Orquestracao de sagas, gerenciamento de pedidos, carrinho |
 | **Payment** | 8084 | payment_db | Integracao Mercado Pago, processamento de pagamentos, estornos |
 | **Shipment** | 8085 | shipment_db | Gestao de envios, rastreamento, entrega |
-| **Front** | 3000 | — | Vitrine, conta, carrinho, pedidos e area da loja (React) |
+| **Front** | 3000 | — | Vitrine, conta, carrinho, pedidos e area da loja (Next.js) |
+| **MinIO** | 9000 / 9001 | — | Fotos de produto (S3). 9000 e a API, 9001 o console |
 
 ---
 
@@ -211,6 +212,7 @@ nao existirem, o container gera um par descartavel no primeiro boot e avisa no l
 
 - Loja: http://localhost:3000
 - Gateway: http://localhost:8080
+- Console do MinIO: http://localhost:9001 (usuario e senha de `S3_ACCESS_KEY`/`S3_SECRET_KEY`)
 - Conectores Debezium: chegam a RUNNING sozinhos (o `connect-init` insiste ate la)
 
 ### 2. Segredos (opcionais, cada um libera uma coisa)
