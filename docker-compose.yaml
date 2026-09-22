@@ -92,10 +92,6 @@ services:
     restart: unless-stopped
     ports:
       - 8080:8080
-    env_file:
-      # Opcional: sem o arquivo, valem os defaults abaixo.
-      - path: ./micro-services/api-gateway/.env
-        required: false
     environment:
       # Heap limitado: seis JVMs, Kafka e Connect precisam caber numa maquina de desenvolvimento.
       JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
