@@ -130,4 +130,6 @@ quebrou no caminho, e o que ficou decidido:
 | Bucket com leitura anônima | Foto de vitrine é pública. Assinar cada `<img>` só somaria latência e quebraria cache do navegador |
 | Remover a foto apaga o objeto, mas a falha ao apagar não derruba a remoção | O registro no banco é a verdade; objeto órfão é lixo barato, foto fantasma na vitrine é defeito visível |
 | A validação de URL aceita `http` quando é o nosso próprio bucket | Em ambiente local o MinIO serve por `http`, e foi a própria API que devolveu aquela URL. Para URL de fora, segue exigindo `https` |
-| Enviar arquivo só depois do produto existir | A URL assinada é por produto; na criação ainda não há id. Enquanto isso, o cadastro aceita colar uma URL |
+| Envio também antes do produto existir, com rascunho promovido no backend | O id nasce no `INSERT`, então na criação não há `{id}` para a rota de upload. O arquivo vai para `rascunho/{uuid}` e, ao criar o produto, o backend move para a pasta dele. A alternativa seria o front segurar o arquivo e enviar depois — o que deixaria a arrumação na tela |
+| Falha ao promover o rascunho não derruba a criação | O objeto continua acessível pela URL de rascunho; perder o produto por causa da arrumação da pasta seria pior. Fica o log |
+| Rascunho abandonado expira em um dia, por regra do bucket | Formulário que ninguém salva deixa objeto sem dono. Varrer isso na aplicação seria código para um problema que o armazenamento já resolve |
