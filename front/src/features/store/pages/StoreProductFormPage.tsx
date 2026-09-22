@@ -25,6 +25,7 @@ import {
   useManageProduct,
   usePatchProduct,
   useReorderPhotos,
+  useRequestPhotoUploadUrl,
   useUpdateStock,
 } from '../queries'
 import { PhotoEditor } from '../components/PhotoEditor'
@@ -148,6 +149,9 @@ function CreateProductForm() {
 
         <Card className="p-4">
           <h2 className="mb-3 text-sm font-semibold text-ink">Fotos</h2>
+          <p className="mb-3 text-xs text-muted">
+            Envio direto de arquivo só fica disponível depois que o produto é criado — por enquanto, cole a URL.
+          </p>
           <PhotoEditor photos={photos} onAdd={addPhotoLocal} onRemove={removePhotoLocal} onMove={movePhotoLocal} />
         </Card>
 
@@ -180,6 +184,7 @@ function EditProductForm({ id }: { id: number }) {
   const addPhoto = useAddPhoto(id)
   const deletePhoto = useDeletePhoto(id)
   const reorderPhotos = useReorderPhotos(id)
+  const requestPhotoUploadUrl = useRequestPhotoUploadUrl(id)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -368,6 +373,9 @@ function EditProductForm({ id }: { id: number }) {
             onAdd={addPhotoRemote}
             onRemove={removePhotoRemote}
             onMove={movePhotoRemote}
+            onRequestUploadUrl={(file) =>
+              requestPhotoUploadUrl.mutateAsync({ fileName: file.name, contentType: file.type, sizeBytes: file.size })
+            }
             busy={addPhoto.isPending || deletePhoto.isPending || reorderPhotos.isPending}
           />
           {(addPhoto.isError || deletePhoto.isError || reorderPhotos.isError) && (

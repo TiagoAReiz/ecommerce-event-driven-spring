@@ -1467,6 +1467,49 @@ Todo produto é da loja: `id_owner` é preenchido com o `owner` único, nunca ve
 
 ---
 
+#### `POST /products/{id}/photos/upload-url` — `IMPLEMENTADO`
+
+| | |
+|---|---|
+| **Auth** | `catalog:write` + papel `owner` |
+
+Gera uma url assinada de PUT no S3 (MinIO) para o navegador subir a foto direto, sem passar
+pelo backend. O front chama esta rota primeiro, sobe o arquivo com PUT na `uploadUrl` e só
+depois registra a foto com a `publicUrl` em `POST /products/{id}/photos`.
+
+**Request**
+
+```json
+{ "fileName": "frente.webp", "contentType": "image/webp", "sizeBytes": 123456 }
+```
+
+**Resposta `200`**
+
+```json
+{
+  "uploadUrl": "http://localhost:9000/produtos/118/3f2a9c1e-....webp?X-Amz-Algorithm=...",
+  "publicUrl": "http://localhost:9000/produtos/118/3f2a9c1e-....webp",
+  "expiresIn": 300
+}
+```
+
+A chave do objeto nunca usa o `fileName` enviado — pode colidir ou carregar caminho. Vira
+`{idProduct}/{uuid}.{extensão}`, com a extensão derivada do `contentType`. `uploadUrl` é
+assinada contra `S3_PUBLIC_URL` (quem usa é o navegador, `minio:9000` não resolve fora da rede
+do compose); operações internas do serviço (como apagar o objeto ao remover a foto) usam
+`S3_ENDPOINT`.
+
+| Código | Quando |
+|---|---|
+| `200` | url gerada |
+| `401` | token inválido |
+| `403` | sem `catalog:write` |
+| `404` | produto inexistente ou removido |
+| `422` | `contentType` fora de `image/jpeg`, `image/png`, `image/webp`, `image/avif` (`INVALID_CONTENT_TYPE`); `sizeBytes` acima de 5 MB (`FILE_TOO_LARGE`) |
+| `500` / `503` | banco ou storage |
+
+---
+
 #### `POST /products/{id}/reviews` — `PLANEJADO`
 
 | | |
@@ -1681,7 +1724,11 @@ Soft delete. Some da vitrine; continua visível em pedidos antigos (que têm sna
 
 ---
 
-#### `DELETE /products/{id}/photos/{photoId}` — `PLANEJADO`
+#### `DELETE /products/{id}/photos/{photoId}` — `IMPLEMENTADO`
+
+Junto com a remoção lógica no banco, tenta apagar o objeto no S3 quando a `photoUrl` aponta
+para o nosso bucket. Falha ao apagar o objeto não derruba a remoção — fica só registrada em
+log, porque o registro no banco é a verdade.
 
 | Código | Quando |
 |---|---|

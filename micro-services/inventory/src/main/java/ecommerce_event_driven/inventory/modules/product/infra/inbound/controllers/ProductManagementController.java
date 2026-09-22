@@ -6,7 +6,11 @@ import ecommerce_event_driven.inventory.modules.product.application.dtos.PatchSt
 import ecommerce_event_driven.inventory.modules.product.application.dtos.ProductDetailResponse;
 import ecommerce_event_driven.inventory.modules.product.application.dtos.ProductDetailResponse.ProductPhotoResponse;
 import ecommerce_event_driven.inventory.modules.product.application.dtos.UpdateProductRequest;
+import ecommerce_event_driven.inventory.modules.product.application.dtos.UploadUrlRequest;
+import ecommerce_event_driven.inventory.modules.product.application.dtos.UploadUrlResponse;
 import ecommerce_event_driven.inventory.modules.product.application.mappers.ProductMapper;
+import ecommerce_event_driven.inventory.modules.product.application.ports.inbound.usecases.GenerateUploadUrlUseCase;
+import ecommerce_event_driven.inventory.modules.product.application.ports.outbound.storage.PhotoStoragePort;
 import ecommerce_event_driven.inventory.modules.product.domain.models.Product;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.CategoryJpaRepository;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.ProductJpaRepository;
@@ -45,16 +49,22 @@ public class ProductManagementController {
     private final ProductPhotoJpaRepository photoRepository;
     private final CategoryJpaRepository categoryRepository;
     private final ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.StockReservationJpaRepository reservationRepository;
+    private final GenerateUploadUrlUseCase generateUploadUrlUseCase;
+    private final PhotoStoragePort photoStorage;
 
     public ProductManagementController(
             ProductJpaRepository productRepository,
             ProductPhotoJpaRepository photoRepository,
             CategoryJpaRepository categoryRepository,
-            ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.StockReservationJpaRepository reservationRepository) {
+            ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.StockReservationJpaRepository reservationRepository,
+            GenerateUploadUrlUseCase generateUploadUrlUseCase,
+            PhotoStoragePort photoStorage) {
         this.productRepository = productRepository;
         this.photoRepository = photoRepository;
         this.categoryRepository = categoryRepository;
         this.reservationRepository = reservationRepository;
+        this.generateUploadUrlUseCase = generateUploadUrlUseCase;
+        this.photoStorage = photoStorage;
     }
 
     // Task 5.1: GET /products/manage
@@ -343,6 +353,17 @@ public class ProductManagementController {
                 saved.getPosition()));
     }
 
+    // Task 5.2: POST /products/{id}/photos/upload-url
+    // Gera a url assinada de PUT: o navegador sobe a foto direto no S3 (MinIO),
+    // sem passar pelo backend. O front registra a foto depois com a publicUrl
+    // devolvida aqui, em POST /products/{id}/photos.
+    @PostMapping("/{id}/photos/upload-url")
+    public ResponseEntity<UploadUrlResponse> generateUploadUrl(
+            @PathVariable Long id,
+            @Valid @RequestBody UploadUrlRequest request) {
+        return ResponseEntity.ok(generateUploadUrlUseCase.execute(id, request));
+    }
+
     /** Corpo de PUT /products/{id}/photos/order. */
     public record PhotoOrderRequest(java.util.List<Item> order) {
         public record Item(Long id, Short position) {
@@ -409,11 +430,25 @@ public class ProductManagementController {
 
         photo.setDeletedAt(java.time.Instant.now());
         photoRepository.save(photo);
+
+        // Falha ao apagar o objeto no S3 nao pode derrubar a remocao da foto:
+        // o registro no banco e a verdade. A porta ja loga e segue sozinha.
+        photoStorage.deleteIfOwned(photo.getPhotoUrl());
+
         return ResponseEntity.noContent().build();
     }
 
     private void validatePhotoUrl(String photoUrl) {
-        if (photoUrl == null || !photoUrl.startsWith("https://")) {
+        if (photoUrl == null) {
+            throw new ecommerce_event_driven.inventory.shared.web.UnprocessableException(
+                    "photoUrl deve ser uma URL absoluta https");
+        }
+        // Foto do nosso proprio armazenamento passa mesmo em http: em ambiente
+        // local o MinIO serve por http, e foi esta rota que devolveu a URL.
+        if (photoUrl.startsWith(photoStorage.publicPrefix())) {
+            return;
+        }
+        if (!photoUrl.startsWith("https://")) {
             throw new ecommerce_event_driven.inventory.shared.web.UnprocessableException(
                     "photoUrl deve ser uma URL absoluta https");
         }

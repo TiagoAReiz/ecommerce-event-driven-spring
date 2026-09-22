@@ -28,7 +28,20 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
+		<awssdk.version>2.55.2</awssdk.version>
 	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<!-- BOM alinha a versao de todo modulo aws que vier a ser usado. -->
+			<dependency>
+				<groupId>software.amazon.awssdk</groupId>
+				<artifactId>bom</artifactId>
+				<version>${awssdk.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -117,6 +130,15 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+		<!--
+			Fotos de produto no S3 (MinIO). O modulo s3 do SDK v2 recente ja
+			embute o presigner (nao existe mais artefato s3-presigner separado
+			no Maven Central), entao esta dependency basta para client e presigner.
+		-->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
 		</dependency>
 	</dependencies>
 

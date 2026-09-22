@@ -75,6 +75,14 @@ export type PhotoOrderRequest = { order: { id: number; position: number }[] }
 /** Corpo de `POST /products/{id}/photos` (variante JSON, sem `multipart/form-data`). */
 export type AddPhotoRequest = { photoUrl: string; position: number }
 
+/** Corpo de `POST /products/{id}/photos/upload-url`: pede uma URL assinada de PUT
+ * para o navegador mandar o arquivo direto ao S3 (MinIO), sem passar pelo backend. */
+export type PhotoUploadUrlRequest = { fileName: string; contentType: string; sizeBytes: number }
+
+/** `uploadUrl` e' a URL assinada (PUT, sem Authorization); `publicUrl` e' o que
+ * depois vira o `photoUrl` de `AddPhotoRequest`. */
+export type PhotoUploadUrlResponse = { uploadUrl: string; publicUrl: string; expiresIn: number }
+
 /** Linha de `GET /orders/manage`: mesmo formato de `GET /orders`, com `idCustomer`. */
 export type OrderManageItem = {
   id: number

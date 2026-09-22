@@ -21,6 +21,7 @@ import {
   patchShipment,
   refundPayment,
   reorderPhotos,
+  requestPhotoUploadUrl,
   syncPayment,
   updateStock,
 } from './api'
@@ -32,6 +33,7 @@ import type {
   CreateProductRequest,
   PatchProductRequest,
   PhotoOrderRequest,
+  PhotoUploadUrlRequest,
   RefundRequest,
   ShipmentPatchRequest,
   StockUpdateRequest,
@@ -125,6 +127,14 @@ export function useAddPhoto(id: number) {
   return useMutation({
     mutationFn: (body: AddPhotoRequest) => addPhoto(id, body),
     onSuccess: () => invalidateProducts(queryClient, id),
+  })
+}
+
+/** Sem `onSuccess`/invalidacao de proposito: pedir a URL assinada nao muda nada
+ * no produto, so' habilita o PUT direto ao S3 que o `PhotoEditor` faz sozinho. */
+export function useRequestPhotoUploadUrl(id: number) {
+  return useMutation({
+    mutationFn: (body: PhotoUploadUrlRequest) => requestPhotoUploadUrl(id, body),
   })
 }
 
