@@ -19,6 +19,11 @@ import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.Pro
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.entity.ProductEntity;
 import ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.entity.ProductPhotoEntity;
 import ecommerce_event_driven.inventory.shared.web.ConflictException;
+import ecommerce_event_driven.inventory.modules.product.application.dtos.CategoryResponse;
+import ecommerce_event_driven.inventory.modules.product.application.mappers.CategoryMapper;
+import ecommerce_event_driven.inventory.modules.product.application.usecases.AvailabilityService;
+import ecommerce_event_driven.inventory.shared.web.PageMeta;
+import ecommerce_event_driven.inventory.shared.web.PageResponse;
 import ecommerce_event_driven.inventory.shared.web.NotFoundException;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
@@ -53,6 +58,7 @@ public class ProductManagementController {
     private final GenerateUploadUrlUseCase generateUploadUrlUseCase;
     private final GenerateDraftUploadUrlUseCase generateDraftUploadUrlUseCase;
     private final PhotoStoragePort photoStorage;
+    private final AvailabilityService availabilityService;
 
     public ProductManagementController(
             ProductJpaRepository productRepository,
@@ -61,7 +67,8 @@ public class ProductManagementController {
             ecommerce_event_driven.inventory.modules.product.infra.outbound.repos.StockReservationJpaRepository reservationRepository,
             GenerateUploadUrlUseCase generateUploadUrlUseCase,
             GenerateDraftUploadUrlUseCase generateDraftUploadUrlUseCase,
-            PhotoStoragePort photoStorage) {
+            PhotoStoragePort photoStorage,
+            AvailabilityService availabilityService) {
         this.productRepository = productRepository;
         this.photoRepository = photoRepository;
         this.categoryRepository = categoryRepository;
@@ -69,11 +76,12 @@ public class ProductManagementController {
         this.generateUploadUrlUseCase = generateUploadUrlUseCase;
         this.generateDraftUploadUrlUseCase = generateDraftUploadUrlUseCase;
         this.photoStorage = photoStorage;
+        this.availabilityService = availabilityService;
     }
 
     // Task 5.1: GET /products/manage
     @org.springframework.web.bind.annotation.GetMapping("/manage")
-    public ResponseEntity<Page<ProductDetailResponse>> listManagement(
+    public ResponseEntity<PageResponse<ProductDetailResponse>> listManagement(
             @RequestParam(required = false, defaultValue = "active") String status,
             @RequestParam(required = false) String q,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
@@ -98,8 +106,9 @@ public class ProductManagementController {
                 throw new IllegalArgumentException("Status inválido: " + status);
         }
 
-        return ResponseEntity.ok(
-            page.map(entity -> {
+        // O envelope do contrato e {content, page:{...}}; devolver o Page cru do
+        // Spring muda o formato e a tela quebra procurando `page.number`.
+        var itens = page.map(entity -> {
                 Product product = ProductMapper.toDomain(entity);
                 var photos = photoRepository.findByProductIdAndDeletedAtIsNullOrderByPositionAsc(product.id())
                     .stream()
@@ -111,14 +120,25 @@ public class ProductManagementController {
                     product.description(),
                     product.price().toPlainString(),
                     product.stock(),
-                    0, // available nao importa em manage
+                    // Importa sim: a lista da loja mostra quanto esta livre para venda,
+                    // que e o estoque menos o que ja esta preso em reserva.
+                    availabilityService.getAvailability(product.id()),
                     product.rating() != null ? product.rating().toPlainString() : "0",
                     product.ratingCount() != null ? product.ratingCount() : 0,
-                    null,
+                    // Sem a categoria, a tela da loja lia `category.name` de undefined
+                    // e a pagina inteira quebrava.
+                    categoryRepository.findById(product.idCategory())
+                        .map(CategoryMapper::toDomain)
+                        .map(c -> new CategoryResponse(c.id(), c.name(), c.slug(), 0L))
+                        .orElse(null),
                     photos,
                     product.createdAt(),
                     product.updatedAt());
-            }));
+        });
+
+        return ResponseEntity.ok(new PageResponse<>(
+            itens.getContent(),
+            new PageMeta(itens.getNumber(), itens.getSize(), itens.getTotalElements(), itens.getTotalPages())));
     }
 
     // Task 5.1: POST /products
