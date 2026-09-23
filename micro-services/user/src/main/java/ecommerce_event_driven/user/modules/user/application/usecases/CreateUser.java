@@ -3,6 +3,7 @@ package ecommerce_event_driven.user.modules.user.application.usecases;
 import ecommerce_event_driven.user.modules.owner.application.ports.inbound.usecases.ProvisionStoreOwnerPort;
 import ecommerce_event_driven.user.modules.user.application.dtos.CreateUserRequest;
 import ecommerce_event_driven.user.modules.user.application.ports.inbound.usecases.CreateUserPort;
+import ecommerce_event_driven.user.modules.user.application.ports.outbound.storage.AvatarStoragePort;
 import ecommerce_event_driven.user.modules.user.application.ports.outbound.repos.UserRepositoryPort;
 import ecommerce_event_driven.user.modules.user.domain.models.User;
 import org.springframework.stereotype.Service;
@@ -13,10 +14,15 @@ public class CreateUser implements CreateUserPort {
 
     private final UserRepositoryPort users;
     private final ProvisionStoreOwnerPort provisionStoreOwner;
+    private final AvatarStoragePort avatares;
 
-    public CreateUser(UserRepositoryPort users, ProvisionStoreOwnerPort provisionStoreOwner) {
+    public CreateUser(
+            UserRepositoryPort users,
+            ProvisionStoreOwnerPort provisionStoreOwner,
+            AvatarStoragePort avatares) {
         this.users = users;
         this.provisionStoreOwner = provisionStoreOwner;
+        this.avatares = avatares;
     }
 
     /**
@@ -34,8 +40,16 @@ public class CreateUser implements CreateUserPort {
                 .name(request.name())
                 .email(request.email())
                 .googleSub(request.googleSub())
-                .photoUrl(request.photoUrl())
                 .build());
+
+        // A foto vem do CDN do Google, que recusa a imagem pedida a partir de outro
+        // dominio e ainda troca a URL com o tempo. Guardamos uma copia nossa; se a
+        // copia falhar, a conta fica sem foto (a tela mostra a inicial do nome) --
+        // perder o login por causa de um avatar seria pior.
+        String foto = avatares.guardar(user.id(), request.photoUrl());
+        if (foto != null) {
+            user = users.save(user.toBuilder().photoUrl(foto).build());
+        }
 
         provisionStoreOwner.provisionIfStoreOwner(user.id(), user.email());
         return user;

@@ -146,6 +146,13 @@ services:
       JWKS_URI: http://api-gateway:8080/.well-known/jwks.json
       GATEWAY_URL: http://api-gateway:8080
       SERVICE_CLIENT_SECRET: ${USER_CLIENT_SECRET:-dev-user-secret}
+      # A foto do Google e copiada para o nosso bucket no login: o CDN deles
+      # bloqueia a imagem pedida de outro dominio e a URL ainda rotaciona.
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
+      S3_BUCKET: ${S3_BUCKET:-produtos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
       STORE_OWNER_EMAIL: ${STORE_OWNER_EMAIL:-dono@loja.local}
     depends_on:
       db:
@@ -153,6 +160,8 @@ services:
       broker:
         condition: service_started
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
   inventory:
