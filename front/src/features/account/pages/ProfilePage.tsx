@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Avatar } from '@/components/Avatar'
 import {
   Badge,
   Button,
@@ -120,13 +121,7 @@ function ProfileCard({ profile }: { profile: UserProfile }) {
       <Card className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            {profile.photoUrl ? (
-              <img src={profile.photoUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
-            ) : (
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-xl font-medium text-brand-700">
-                {profile.name.slice(0, 1).toUpperCase()}
-              </span>
-            )}
+            <Avatar src={profile.photoUrl} name={profile.name} size={64} />
             <div>
               <p className="text-lg font-semibold text-ink">{profile.name}</p>
               <p className="text-sm text-muted">{profile.email}</p>

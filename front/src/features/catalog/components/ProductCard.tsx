@@ -24,7 +24,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           )}
         </div>
         <div className="flex flex-1 flex-col gap-1.5 p-3">
-          <span className="text-xs text-muted">{product.category.name}</span>
+          <span className="text-xs text-muted">{product.category?.name ?? ' '}</span>
           <h3 className="line-clamp-2 text-sm font-medium text-ink">{product.name}</h3>
           <RatingStars rating={product.rating} count={product.ratingCount} />
           <div className="mt-auto flex items-center justify-between pt-1">

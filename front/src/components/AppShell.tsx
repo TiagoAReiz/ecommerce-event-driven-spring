@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { Avatar } from '@/components/Avatar'
 import { Button, Input } from '@/components/ui'
 import { useAuth } from '@/lib/auth'
 import { cx } from '@/lib/format'
@@ -71,13 +72,7 @@ function Header() {
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
               >
-                {user.photoUrl ? (
-                  <img src={user.photoUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
-                ) : (
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-medium text-brand-700">
-                    {user.name.slice(0, 1).toUpperCase()}
-                  </span>
-                )}
+                <Avatar src={user.photoUrl} name={user.name} size={28} />
                 <span className="hidden max-w-[10rem] truncate sm:block">{user.name}</span>
               </button>
 
