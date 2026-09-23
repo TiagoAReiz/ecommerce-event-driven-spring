@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { formatarPreco, limparPreco } from '../preco'
 import {
   Button,
   Card,
@@ -139,8 +140,13 @@ function CreateProductForm() {
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Preço" required hint="Ex.: 349.90" error={price && !validPrice ? 'Use 2 casas decimais.' : undefined}>
-              <Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" />
+            <Field label="Preço" required hint="Ex.: 349,90 — fechamos em duas casas" error={price && !validPrice ? 'Use 2 casas decimais.' : undefined}>
+              <Input
+              value={price}
+              onChange={(event) => setPrice(limparPreco(event.target.value))}
+              onBlur={(event) => setPrice(formatarPreco(event.target.value))}
+              inputMode="decimal"
+            />
             </Field>
 
             <Field label="Estoque inicial" hint="Padrão 0" error={stock && !validStock ? 'Inteiro, maior ou igual a 0.' : undefined}>
@@ -207,7 +213,7 @@ function EditProductForm({ id }: { id: number }) {
     if (!productQuery.data || loadedFrom === id) return
     setName(productQuery.data.name)
     setDescription(productQuery.data.description)
-    setIdCategory(String(productQuery.data.category.id))
+    setIdCategory(productQuery.data.category ? String(productQuery.data.category.id) : '')
     setPrice(productQuery.data.price)
     setLoadedFrom(id)
   }, [productQuery.data, id, loadedFrom])
@@ -322,8 +328,13 @@ function EditProductForm({ id }: { id: number }) {
             </Select>
           </Field>
 
-          <Field label="Preço" required hint="Ex.: 349.90" error={price && !validPrice ? 'Use 2 casas decimais.' : undefined}>
-            <Input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" />
+          <Field label="Preço" required hint="Ex.: 349,90 — fechamos em duas casas" error={price && !validPrice ? 'Use 2 casas decimais.' : undefined}>
+            <Input
+              value={price}
+              onChange={(event) => setPrice(limparPreco(event.target.value))}
+              onBlur={(event) => setPrice(formatarPreco(event.target.value))}
+              inputMode="decimal"
+            />
           </Field>
 
           {patchProduct.isError && (

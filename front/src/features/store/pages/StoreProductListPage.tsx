@@ -109,15 +109,19 @@ export default function StoreProductListPage() {
         <div className="flex flex-col gap-3">
           {productsQuery.data.content.map((product) => (
             <div key={product.id} className="flex flex-wrap items-center gap-4 rounded-[12px] border border-line bg-white p-4">
-              {product.photoUrl ? (
-                <img src={product.photoUrl} alt="" className="h-16 w-16 shrink-0 rounded-[8px] object-cover" />
+              {product.photos?.[0]?.photoUrl ? (
+                <img
+                  src={product.photos[0].photoUrl}
+                  alt=""
+                  className="h-16 w-16 shrink-0 rounded-[8px] object-cover"
+                />
               ) : (
                 <div className="h-16 w-16 shrink-0 rounded-[8px] bg-brand-50" />
               )}
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink">{product.name}</p>
-                <p className="text-xs text-muted">{product.category.name}</p>
+                <p className="text-xs text-muted">{product.category?.name ?? '—'}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <ProductStatusBadge product={product} />
                   <span className="text-xs text-muted">

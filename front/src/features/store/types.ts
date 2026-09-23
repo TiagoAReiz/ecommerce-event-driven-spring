@@ -23,8 +23,9 @@ export type ProductManageItem = {
   available: number
   rating: Money
   ratingCount: number
-  photoUrl: string | null
-  category: ProductCategoryRef
+  /** A rota de gestao devolve a lista de fotos; a capa e a primeira. */
+  photos: ProductPhoto[]
+  category: ProductCategoryRef | null
   deletedAt: string | null
 }
 
