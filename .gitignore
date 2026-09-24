@@ -38,3 +38,14 @@ build/
 
 ### IntelliJ (config local, nao versionar) ###
 .idea/
+
+### Front (Next.js / Node) ###
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+npm-debug.log*
+
+### SO ###
+.DS_Store
+Thumbs.db

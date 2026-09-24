@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/TiagoAReiz/ecommerce-event-driven-spring/actions/workflows/ci.yml/badge.svg)](https://github.com/TiagoAReiz/ecommerce-event-driven-spring/actions/workflows/ci.yml)
 
-A microservices-based online store with event-driven architecture, leveraging Kafka for asynchronous communication and Debezium for transactional outbox pattern to guarantee at-least-once event delivery.
+Event-driven e-commerce: six Spring Boot 4 / Java 25 microservices coordinated by an **orchestrated saga**, publishing every domain event through a **transactional outbox streamed by Debezium (CDC) into Kafka** — no dual writes, at-least-once delivery in commit order. Includes a Next.js storefront, and the whole stack comes up with a single `docker compose up`.
+
+**Destaques:** saga com compensacao (estorno, devolucao de estoque) · outbox + Debezium Outbox Event Router nos cinco bancos · retry exponencial + DLT · checkout e pagamento idempotentes (`Idempotency-Key`) · JWT RS256 emitido pelo gateway com escopos por papel · arquitetura hexagonal (ports & adapters) em cada servico · CI com Postgres real por servico.
 
 ---
 
@@ -42,8 +44,15 @@ graph TB
     end
     
     CLIENT["Client<br/>Browser"]
+    FRONT["Front Next.js<br/>:3000"]
+    MINIO["MinIO (S3)<br/>fotos"]
     
+    CLIENT -->|HTTP| FRONT
+    FRONT -->|HTTP| GW
     CLIENT -->|HTTP| GW
+    CLIENT -->|Fotos| MINIO
+    INV -->|Upload| MINIO
+    USER -->|Foto de perfil| MINIO
     GW -->|HTTP| USER
     GW -->|HTTP| INV
     GW -->|HTTP| ORDER
@@ -75,16 +84,16 @@ graph TB
     PAYMENT -->|Read/Write| DB
     SHIPMENT -->|Read/Write| DB
     
-    USER -->|Cache| REDIS
     INV -->|Cache| REDIS
     ORDER -->|Cache| REDIS
     PAYMENT -->|Cache| REDIS
     SHIPMENT -->|Cache| REDIS
     
     PAYMENT -->|API| MP
+    MP -->|Webhook| GW
     GW -->|Webhook| PAYMENT
     
-    ORDER -->|Geocoding| BRAPI
+    SHIPMENT -->|Geocoding| BRAPI
     GW -->|OAuth| GOOGLE
 ```
 
@@ -166,6 +175,18 @@ Servicos internos se autenticam com clientId + clientSecret, obtendo tokens de s
 ### Retry Bloqueante + Dead Letter Topic
 Kafka Consumer com DefaultErrorHandler: retry exponencial (1s, x2, max 10s, total 60s) para erros transientes. Erros nao-retentaveis (desserializacao, integridade) vao direto para <topico>-dlt na mesma particao.
 
+### Consumidores Idempotentes
+A entrega e at-least-once, entao cada passo da saga tolera reentrega: reservar ou baixar o estoque de novo cai em `ALREADY_RESERVED` / `ALREADY_COMMITTED` e nao duplica efeito. A key da mensagem e o `aggregateid` da outbox (ex.: `orderId`), o que mantem os eventos de um mesmo pedido em ordem na mesma particao.
+
+### Reserva de Estoque com Prazo
+`order.created` reserva o estoque por 30 minutos (`held`). A baixa definitiva (`confirmed`) so acontece depois do pagamento aprovado; cancelamento libera a reserva, e a reserva vencida deixa de contar sozinha (sem job de limpeza).
+
+### Checkout e Pagamento Idempotentes
+`POST /orders` e `POST /payments` exigem `Idempotency-Key` (UUID). No `order` o estado fica no Redis (`IN_FLIGHT` por 60s, resultado por 24h, mesma chave com outro corpo responde `IDEMPOTENCY_KEY_REUSED`); no `payment` a chave e gravada com o pagamento e repassada ao Mercado Pago. Repetir a requisicao nao cria outro pedido nem cobra de novo. Valor e frete sao sempre calculados no servidor.
+
+### Arquitetura Hexagonal por Servico
+Cada modulo separa `application` (casos de uso e ports de entrada/saida) de `infra` (controllers, consumidores Kafka, repositorios JPA, clientes HTTP). O dominio nao conhece Kafka nem Spring Web.
+
 ### Redis como Cache Complementar
 Cache de leitura para rotas de catalogo e analise de frete. Falha de Redis nao derruba nenhuma rota: loga WARN e segue para o banco.
 
@@ -175,14 +196,15 @@ Cache de leitura para rotas de catalogo e analise de frete. Falha de Redis nao d
 
 - Runtime: Java 25, Spring Boot 4.1.1
 - Persistencia: PostgreSQL 17, JPA/Hibernate 7
-- Mensageria: Apache Kafka (KRaft), Kafka Connect, Debezium 3.x
+- Mensageria: Apache Kafka 3.9 (KRaft), Kafka Connect, Debezium 3.1
+- Armazenamento de objetos: MinIO (API S3) para fotos de produto e de perfil
 - Cache: Redis 7.4-alpine
 - Build: Maven
 - Migrations: Flyway
 - Serializacao: Jackson 3.x (ObjectMapper)
 - Autenticacao: Spring Security 7, OAuth2, JWT (RS256)
 - Validacao: Jakarta Bean Validation
-- Stack de entrada: REST (RestClient), nao WebClient
+- Cliente HTTP entre servicos: RestClient (sincrono), nao WebClient
 
 **Front** (`front/`)
 
@@ -238,14 +260,14 @@ docker compose down -v     # apaga os volumes tambem
 ### 4. Validar a Subida
 
 ```bash
-# Verificar que gateway responde
-curl -X GET http://localhost:8080/health
+# Verificar que gateway responde (JWKS e publico)
+curl -s http://localhost:8080/.well-known/jwks.json
 
 # Verificar que broker esta pronto
 docker compose exec broker /opt/kafka/bin/kafka-topics.sh --list --bootstrap-server broker:9092
 
-# Verificar que conectores estao RUNNING
-curl -s http://localhost:8083/connectors | jq .
+# Verificar que conectores estao RUNNING (o Kafka Connect nao publica porta no host)
+docker compose exec connect curl -s "http://localhost:8083/connectors?expand=status"
 ```
 
 ### 5. Percorrer a Saga Completa
@@ -367,4 +389,4 @@ As falhas encontradas nessa verificacao, e o que ficou decidido em cada uma, est
 
 ---
 
-Privado. Projeto de portfolio.
+Projeto de portfolio.

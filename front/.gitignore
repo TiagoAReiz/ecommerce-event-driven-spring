@@ -27,3 +27,7 @@ dist-ssr
 
 # artefato de build do TypeScript
 *.tsbuildinfo
+
+# Next.js: saida de build e cache do Turbopack, gerados por `npm run build` / `next dev`
+.next/
+out/
